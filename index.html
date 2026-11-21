@@ -1608,6 +1608,46 @@
     updateGlobalUI();
     lucide.createIcons();
   </script>
+  <script id="disable-blue-frames">
+  (function () {
+    const isBlue = (v) => {
+      if (!v || typeof v !== "string") return false;
+      const s = v.toLowerCase().replace(/\s+/g, "");
+      return (
+        s.includes("blue") ||
+        s.includes("cyan") ||
+        s.includes("sky") ||
+        s.includes("#3b82f6") ||
+        s.includes("#60a5fa") ||
+        s.includes("#38bdf8") ||
+        s.includes("#0ea5e9") ||
+        s.includes("#2563eb") ||
+        s.includes("#00a") ||
+        /rgba?\(\s*(0|14|37|56|59|96|147|56)\s*,\s*(120|130|165|189|246)\s*,\s*(246|250|248|255)/i.test(v)
+      );
+    };
+
+    const origStrokeRect = CanvasRenderingContext2D.prototype.strokeRect;
+    CanvasRenderingContext2D.prototype.strokeRect = function (...args) {
+      if (isBlue(this.strokeStyle)) return;
+      return origStrokeRect.apply(this, args);
+    };
+
+    const origStroke = CanvasRenderingContext2D.prototype.stroke;
+    CanvasRenderingContext2D.prototype.stroke = function (...args) {
+      if (isBlue(this.strokeStyle)) return;
+      return origStroke.apply(this, args);
+    };
+
+    const origRoundRect = CanvasRenderingContext2D.prototype.roundRect;
+    if (origRoundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function (...args) {
+        if (isBlue(this.strokeStyle)) return;
+        return origRoundRect.apply(this, args);
+      };
+    }
+  })();
+</script>
 </body>
   <style id="no-blue-focus">
   * { -webkit-tap-highlight-color: transparent !important; }
