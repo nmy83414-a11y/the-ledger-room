@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE LEDGER ROOM — Steam Indie Edition (v5)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-night: #0d0b1a;
+      --bg-panel: #161226;
+      --accent: #f4b860;
+      --accent-purple: #a78bfa;
+      --accent-cyan: #7dd3fc;
+      --text-main: #f6efe6;
+      --text-muted: #b0a4c0;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background-color: var(--bg-night);
+      color: var(--text-main);
+      font-family: 'Be Vietnam Pro', sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .font-display { font-family: 'Playfair Display', serif; }
+    .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+
+    /* Hạt giấy sơn mờ kiểu Steam Indie */
+    .film-grain {
+      position: fixed; inset: 0; pointer-events: none; z-index: 80; opacity: 0.045;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* Chuyển động rung lắc nhẹ của toa tàu */
+    @keyframes trainSway {
+      0%, 100% { transform: scale(1.03) translate(0px, 0px); }
+      50% { transform: scale(1.036) translate(-2.5px, 2px); }
+    }
+    .train-motion { animation: trainSway 4.8s ease-in-out infinite; will-change: transform; }
+
+    /* Quầng sáng đèn vàng ấm */
+    @keyframes warmPulse {
+      0%, 100% { opacity: 0.38; transform: scale(1); }
+      50% { opacity: 0.72; transform: scale(1.07); }
+    }
+    .warm-glow-orb {
+      position: absolute; border-radius: 50%;
+      background: radial-gradient(circle, rgba(244, 184, 96, 0.34) 0%, transparent 70%);
+      pointer-events: none;
+      animation: warmPulse 4.4s ease-in-out infinite;
+    }
+
+    /* Tách lớp chuyển động nhịp thở cho nhân vật */
+    @keyframes charBreathe {
+      0%, 100% { transform: translate(-50%, -50%) scaleY(1) translateY(0); }
+      50% { transform: translate(-50%, -50%) scaleY(1.018) translateY(-2.5px); }
+    }
+    .char-alive {
+      animation: charBreathe 3.2s ease-in-out infinite;
+      transform-origin: bottom center;
+    }
+
+    /* VÙNG TƯƠNG TÁC SẠCH SẼ (KHÔNG VÒNG TRÒN CHE TRANH) */
+    .interact-region {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      z-index: 25;
+      border-radius: 16px;
+      border: 2px solid transparent;
+      background: transparent;
+      transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Rê chuột vào mới phát sáng viền hào quang mềm */
+    .interact-region.clue:hover {
+      border-color: rgba(244, 184, 96, 0.9);
+      background: radial-gradient(circle, rgba(244, 184, 96, 0.18) 0%, transparent 75%);
+      box-shadow: 0 0 28px rgba(244, 184, 96, 0.55), inset 0 0 18px rgba(244, 184, 96, 0.25);
+    }
+    .interact-region.lore:hover {
+      border-color: rgba(251, 191, 36, 0.75);
+      background: radial-gradient(circle, rgba(251, 191, 36, 0.14) 0%, transparent 75%);
+      box-shadow: 0 0 22px rgba(251, 191, 36, 0.45);
+    }
+    .interact-region.char:hover {
+      border-color: rgba(125, 211, 252, 0.85);
+      background: radial-gradient(circle, rgba(125, 211, 252, 0.15) 0%, transparent 75%);
+      box-shadow: 0 0 28px rgba(125, 211, 252, 0.5);
+    }
+    .interact-region.door:hover {
+      border-color: rgba(167, 139, 250, 0.9);
+      background: radial-gradient(circle, rgba(167, 139, 250, 0.2) 0%, transparent 75%);
+      box-shadow: 0 0 30px rgba(167, 139, 250, 0.55);
+    }
+
+    /* Chấm nhỏ cực mảnh báo hiệu đã giải xong (không che tranh) */
+    .solved-tick {
+      position: absolute; top: 6px; right: 6px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(16, 185, 129, 0.9); color: #0d0b1a;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+      pointer-events: none;
+    }
+
+    /* Hiệu ứng Kính Lúp xuất hiện ngay khi CLICK vào vật chứng */
+    @keyframes magnifierPop {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-25deg); }
+      45% { opacity: 1; transform: translate(-50%, -50%) scale(1.25) rotate(0deg); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.7) rotate(10deg); }
+    }
+    #click-magnifier {
+      position: fixed; pointer-events: none; z-index: 65;
+      width: 68px; height: 68px; border-radius: 50%;
+      background: rgba(20, 16, 36, 0.85);
+      border: 2.5px solid #f4b860;
+      color: #f4b860;
+      display: none; align-items: center; justify-content: center;
+      box-shadow: 0 0 32px rgba(244, 184, 96, 0.75);
+    }
+    #click-magnifier.active {
+      display: flex;
+      animation: magnifierPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Zoom & Unfold Modal */
+    .scene-zooming {
+      transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), filter 0.42s ease;
+      transform: scale(1.07);
+      filter: blur(4px) brightness(0.6);
+    }
+    @keyframes unfoldDossier {
+      0% { opacity: 0; transform: perspective(900px) rotateX(-14deg) scale(0.88) translateY(20px); }
+      100% { opacity: 1; transform: perspective(900px) rotateX(0deg) scale(1) translateY(0); }
+    }
+    .unfold-anim { animation: unfoldDossier 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    /* Hiệu ứng nhân vật nhún nhẹ khi đang nói chuyện */
+    @keyframes talkBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    .talking-portrait { animation: talkBounce 0.45s ease-in-out infinite; }
+
+    #left-drawer { transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+    #left-drawer.open { transform: translateX(0); }
+    #hover-tooltip { position: fixed; pointer-events: none; z-index: 70; transform: translate(-50%, -140%); transition: opacity 0.15s ease; }
+    #scene-transition { pointer-events: none; transition: opacity 0.32s ease; }
+
+    /* Bảng minh họa trong bài giảng */
+    .lecture-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .lecture-table th { background: rgba(167, 139, 250, 0.18); color: #f4b860; text-align: left; padding: 7px 10px; border: 1px solid rgba(255,255,255,0.12); }
+    .lecture-table td { padding: 6px 10px; border: 1px solid rgba(255,255,255,0.08); color: #e8dff2; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #120e1f; }
+    ::-webkit-scrollbar-thumb { background: #3f335c; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <div id="grain-layer" class="film-grain"></div>
+  <div id="scene-transition" class="fixed inset-0 bg-[#080612] opacity-0 z-[75]"></div>
+  <div id="hover-tooltip" class="opacity-0 px-3.5 py-1.5 rounded-lg bg-[#141024]/95 border border-[#f4b860]/60 text-xs text-[#f6efe6] shadow-2xl whitespace-nowrap"></div>
+
+  <!-- Kính lúp xuất hiện khi click vật chứng -->
+  <div id="click-magnifier"><i data-lucide="search" class="w-8 h-8"></i></div>
+
+  <!-- ==================== NÚT MENU GÓC TRÊN BÊN TRÁI ==================== -->
+  <button onclick="toggleLeftDrawer(true)" title="Mở Menu, Cài đặt & Sao lưu"
+    class="fixed top-5 left-5 z-50 p-2.5 rounded-xl bg-[#141024]/80 border border-[#a78bfa]/40 text-[#f6efe6] hover:border-[#f4b860] hover:text-[#f4b860] backdrop-blur-md transition shadow-lg">
+    <i data-lucide="menu" class="w-5 h-5"></i>
+  </button>
+
+  <!-- ==================== THANH MENU TRƯỢT BÊN TRÁI ==================== -->
+  <div id="drawer-backdrop" onclick="toggleLeftDrawer(false)" class="hidden fixed inset-0 z-[55] bg-black/65 backdrop-blur-xs"></div>
+  <aside id="left-drawer" class="fixed top-0 left-0 h-full w-full max-w-xs z-[60] bg-[#141024] border-r border-[#a78bfa]/35 p-6 flex flex-col justify-between shadow-2xl">
+    <div class="space-y-5 overflow-y-auto pr-1">
+      <div class="flex items-center justify-between border-b border-white/10 pb-4">
+        <div>
+          <span class="text-[10px] uppercase tracking-[0.25em] text-[#a78bfa] block">The Ledger Room</span>
+          <h3 class="font-display text-xl text-[#f6efe6]">Bảng Điều Khiển</h3>
+        </div>
+        <button onclick="toggleLeftDrawer(false)" class="p-1.5 rounded-lg text-[#b0a4c0] hover:text-white hover:bg-white/10">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-1.5 text-sm">
+        <button onclick="toggleLeftDrawer(false); goToScreen('title')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg hover:bg-white/5 text-[#e8dff2] transition">
+          <i data-lucide="home" class="w-4 h-4 text-[#f4b860]"></i> Màn hình chính
+        </button>
+        <button onclick="toggleLeftDrawer(false); goToScreen('desk')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg hover:bg-white/5 text-[#e8dff2] transition">
+          <i data-lucide="folder-open" class="w-4 h-4 text-[#f4b860]"></i> Chọn Hồ sơ Vụ án
+        </button>
+        <button onclick="toggleLeftDrawer(false); openModal('modal-import')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg hover:bg-white/5 text-[#e8dff2] transition">
+          <i data-lucide="file-plus-2" class="w-4 h-4 text-[#a78bfa]"></i> Nạp Hồ sơ mới (JSON)
+        </button>
+        <button onclick="toggleLeftDrawer(false); openModal('modal-assets')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg hover:bg-white/5 text-[#e8dff2] transition">
+          <i data-lucide="image" class="w-4 h-4 text-[#7dd3fc]"></i> Nạp 4 Ảnh Bối Cảnh
+        </button>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-[#1e1833] border border-[#a78bfa]/25 text-xs space-y-1.5">
+        <div class="flex justify-between"><span class="text-[#b0a4c0]">Bài tập Excel đã giải:</span><strong id="menu-solved-count" class="text-[#f4b860]">0 / 4</strong></div>
+        <div class="flex justify-between"><span class="text-[#b0a4c0]">Chuẩn MOS Hạng S:</span><strong id="menu-mos-count" class="text-emerald-400">0</strong></div>
+        <div class="flex justify-between"><span class="text-[#b0a4c0]">Manh mối cốt truyện:</span><strong id="menu-lore-count" class="text-[#7dd3fc]">0 / 4</strong></div>
+      </div>
+
+      <!-- Sao lưu & Khôi phục -->
+      <div class="space-y-2.5 pt-3 border-t border-white/10">
+        <p class="text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold">Sao lưu & Khôi phục (Backup)</p>
+        <button onclick="exportBackup()" class="w-full py-2 px-3 rounded-lg bg-[#f4b860]/15 border border-[#f4b860]/50 text-[#f4b860] text-xs font-semibold hover:bg-[#f4b860] hover:text-[#0d0b1a] transition flex items-center justify-center gap-2">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> Tải file Backup (.json)
+        </button>
+        <label class="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/15 text-[#e8dff2] text-xs hover:border-[#a78bfa] transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="upload" class="w-3.5 h-3.5"></i> Khôi phục từ Backup
+          <input type="file" accept=".json" class="hidden" onchange="importBackup(event)" />
+        </label>
+        <p id="backup-feedback" class="hidden text-[11px]"></p>
+      </div>
+
+      <!-- Cài đặt -->
+      <div class="space-y-2.5 pt-3 border-t border-white/10 text-xs">
+        <p class="text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold">Cài đặt</p>
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="text-[#d6cce6]">Chuyển động tàu, mưa & bụi</span>
+          <input id="setting-fx" type="checkbox" checked onchange="updateSettings()" class="accent-[#f4b860]">
+        </label>
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="text-[#d6cce6]">Hiệu ứng hạt phim (Grain)</span>
+          <input id="setting-grain" type="checkbox" checked onchange="updateSettings()" class="accent-[#f4b860]">
+        </label>
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="text-[#d6cce6]">Âm thanh tương tác nhẹ</span>
+          <input id="setting-sound" type="checkbox" checked onchange="updateSettings()" class="accent-[#f4b860]">
+        </label>
+      </div>
+    </div>
+
+    <div class="pt-3 border-t border-white/10">
+      <button onclick="resetAllProgress()" class="w-full py-2 rounded-lg bg-red-950/50 border border-red-500/35 text-red-300 text-xs hover:bg-red-900/50 transition">
+        Xóa tiến độ & chơi lại từ đầu
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== MÀN HÌNH 1: TITLE SCREEN TỐI GIẢN ==================== -->
+  <section id="screen-title" class="relative h-screen w-full overflow-hidden flex items-center justify-center z-20 bg-[#0d0b1a]">
+    <div id="title-bg-layer" class="absolute inset-0 bg-cover bg-center train-motion"
+      style="background-image: linear-gradient(to bottom, rgba(13,11,26,0.32), rgba(13,11,26,0.72)), url('title.png');"></div>
+
+    <canvas id="ambient-canvas" class="absolute inset-0 pointer-events-none z-10"></canvas>
+
+    <div class="relative z-20 text-center px-6 -mt-8">
+      <p class="text-[11px] uppercase tracking-[0.45em] text-[#c4b5fd] mb-3 drop-shadow">Financial Mystery Escape</p>
+      <h1 class="font-display text-5xl sm:text-7xl md:text-8xl font-bold text-[#f6efe6] tracking-tight drop-shadow-[0_6px_28px_rgba(0,0,0,0.85)] mb-10">
+        The Ledger <span class="italic font-normal text-[#f4b860]">Room</span>
+      </h1>
+
+      <button onclick="startGame()" class="group inline-flex items-center gap-3 px-11 py-4 rounded-full bg-[#f4b860] text-[#0d0b1a] font-semibold tracking-wider uppercase text-sm hover:bg-[#ffd085] hover:scale-105 transition shadow-[0_0_38px_rgba(244,184,96,0.5)]">
+        <span id="title-start-btn-text">Bắt đầu</span>
+        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- ==================== MÀN HÌNH 2: CHỌN HỒ SƠ VỤ ÁN ==================== -->
+  <section id="screen-desk" class="hidden relative h-screen w-full overflow-y-auto p-6 pt-20 md:p-14 md:pt-20 z-20 bg-gradient-to-b from-[#0d0b1a] via-[#151029] to-[#0d0b1a]">
+    <div class="max-w-6xl mx-auto">
+      <div class="mb-8">
+        <span class="text-xs uppercase tracking-[0.25em] text-[#a78bfa]">Mùa 1 • Lộ trình Gà Excel + Chuẩn MOS & Tài Chính</span>
+        <h2 class="font-display text-3xl md:text-4xl text-[#f6efe6] mt-1">Hồ Sơ Vụ Án</h2>
+      </div>
+      <div id="cases-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+  </section>
+
+  <!-- ==================== MÀN HÌNH 3: KHÔNG GIAN 3 CẢNH ESCAPE ROOM ==================== -->
+  <section id="screen-room" class="hidden relative h-screen w-full overflow-hidden z-20 bg-[#0b0918]">
+    
+    <header class="fixed top-4 left-20 right-5 z-40 flex items-center justify-between pointer-events-none">
+      <div class="pointer-events-auto px-4 py-2 rounded-xl bg-[#141024]/80 border border-[#a78bfa]/35 backdrop-blur-md">
+        <span id="room-scene-badge" class="text-[10px] uppercase tracking-[0.2em] text-[#f4b860] block">Cảnh 1 / 3 • The Midnight Express</span>
+        <h2 id="room-scene-title" class="font-display text-base md:text-lg text-[#f6efe6] leading-tight">Khoang Hạng Nhất</h2>
+      </div>
+
+      <div class="pointer-events-auto flex items-center gap-2.5">
+        <div class="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#141024]/85 border border-[#a78bfa]/35 backdrop-blur-md text-[11px]">
+          <button onclick="switchScene(0)" id="map-btn-0" class="px-2.5 py-1 rounded-lg transition">1. Khoang VIP</button>
+          <span class="text-white/25">→</span>
+          <button onclick="switchScene(1)" id="map-btn-1" class="px-2.5 py-1 rounded-lg transition">2. Toa Hành Lý</button>
+          <span class="text-white/25">→</span>
+          <button onclick="switchScene(2)" id="map-btn-2" class="px-2.5 py-1 rounded-lg transition">3. Buồng Lái</button>
+        </div>
+
+        <button onclick="openEvidenceBag()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#141024]/85 border border-[#f4b860]/50 text-[#f6efe6] text-xs font-medium hover:bg-[#f4b860] hover:text-[#0d0b1a] backdrop-blur-md transition">
+          <i data-lucide="briefcase" class="w-4 h-4"></i>
+          <span id="room-progress-text">Manh mối (0/4)</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- SÂN KHẤU CHỨA ẢNH STEAM INDIE + LỚP MƯA/ĐÈN + VÙNG SÁNG TƯƠNG TÁC -->
+    <div id="scene-stage" class="relative w-full h-full overflow-hidden">
+      <div id="scene-bg-img" class="absolute inset-0 bg-cover bg-center train-motion" style="filter: brightness(0.95) contrast(1.03);"></div>
+
+      <!-- Quầng sáng vàng ấm -->
+      <div class="warm-glow-orb w-[380px] h-[380px] top-[32%] left-[44%]"></div>
+      <div class="warm-glow-orb w-[280px] h-[280px] top-[34%] left-[18%]" style="animation-delay: 1.8s;"></div>
+
+      <!-- Lớp mưa nhẹ & bụi sáng động -->
+      <canvas id="room-fx-canvas" class="absolute inset-0 pointer-events-none z-10"></canvas>
+
+      <!-- Container Vùng Tương Tác (Sạch sẽ, không vòng tròn, rê vào mới phát sáng) -->
+      <div id="hotspots-layer" class="absolute inset-0 z-20"></div>
+    </div>
+
+    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 px-5 py-2 rounded-full bg-[#141024]/85 border border-[#a78bfa]/35 backdrop-blur-md text-xs text-[#d6cce6] flex items-center gap-2 max-w-[92vw]">
+      <i data-lucide="compass" class="w-3.5 h-3.5 text-[#f4b860] shrink-0"></i>
+      <span id="room-hint-bar" class="truncate">Rê chuột quanh phòng để tìm nhân vật, vật chứng phát sáng và cửa nối toa.</span>
+    </footer>
+
+    <!-- ==================== HỘP THOẠI NHÂN VẬT Ở CHÍNH GIỮA MÀN HÌNH ==================== -->
+    <div id="vn-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080612]/72 backdrop-blur-sm">
+      <div class="unfold-anim w-full max-w-2xl rounded-2xl bg-[#161226]/95 border border-[#7dd3fc]/50 shadow-[0_0_50px_rgba(125,211,252,0.2)] overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 bg-[#100c1c] border-b border-white/10">
+          <div class="flex items-center gap-3.5">
+            <div id="vn-portrait" class="w-16 h-16 rounded-full border-2 border-[#7dd3fc]/80 bg-no-repeat shrink-0 shadow-inner"></div>
+            <div>
+              <h4 id="vn-name" class="font-display text-xl text-[#f6efe6]">Arthur Vance</h4>
+              <span id="vn-role" class="text-xs text-[#7dd3fc]">Trưởng tàu kỳ cựu</span>
+            </div>
+          </div>
+          <button onclick="closeDialogue()" class="p-2 rounded-lg text-[#b0a4c0] hover:text-white hover:bg-white/10">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-5">
+          <p id="vn-text" class="text-sm md:text-base text-[#f6efe6] leading-relaxed min-h-[78px]"></p>
+          <div id="vn-choices" class="flex flex-col gap-2 pt-3 border-t border-white/10"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODAL SOI MANH MỐI PHỤ (KHÔNG BÀI TẬP EXCEL) ==================== -->
+  <div id="modal-lore" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080612]/78 backdrop-blur-sm">
+    <div class="unfold-anim w-full max-w-lg rounded-2xl bg-[#161226] border border-[#f4b860]/55 shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 bg-[#100c1c] border-b border-white/10">
+        <div>
+          <span class="text-[10px] uppercase tracking-[0.25em] text-[#f4b860] block">Ghi chú Thám tử • Manh mối phụ</span>
+          <h3 id="lore-title" class="font-display text-xl text-[#f6efe6]">Tách Cà Phê Trên Bàn</h3>
+        </div>
+        <button onclick="closeLoreModal()" class="p-1.5 rounded-lg text-[#b0a4c0] hover:text-white hover:bg-white/10">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4 text-sm">
+        <p id="lore-desc" class="text-[#e8dff2] leading-relaxed"></p>
+        <div class="p-3.5 rounded-xl bg-[#1e1833] border-l-2 border-[#f4b860] text-xs text-[#d6cce6] italic" id="lore-deduction"></div>
+        <div class="flex justify-end pt-1">
+          <button onclick="closeLoreModal()" class="px-5 py-2 rounded-lg bg-[#f4b860] text-[#0d0b1a] text-xs font-semibold hover:bg-[#ffd085]">Ghi vào sổ tay</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL HỒ SƠ VẬT CHỨNG (GHI CHÚ + BÀI GIẢNG GÀ EXCEL + 3 BƯỚC) ==================== -->
+  <div id="modal-clue" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080612]/80 backdrop-blur-sm">
+    <div class="unfold-anim relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-[#161226] border border-[#f4b860]/50 shadow-2xl flex flex-col">
+      
+      <div class="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#100c1c]">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span id="clue-day-badge" class="px-2.5 py-0.5 rounded bg-[#f4b860]/20 text-[#f4b860] text-[11px] font-semibold">Ngày 1</span>
+            <span id="clue-mos-badge" class="text-[11px] text-[#a78bfa] font-mono-code">MO-210</span>
+          </div>
+          <h3 id="clue-title" class="font-display text-xl text-[#f6efe6]">Tên vật chứng</h3>
+        </div>
+        <button onclick="closeClueModal()" class="p-2 rounded-lg text-[#b0a4c0] hover:text-white hover:bg-white/10">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 4 Tabs -->
+      <div class="flex border-b border-white/10 bg-[#120e20] px-6 text-xs font-medium overflow-x-auto">
+        <button onclick="switchClueTab('lecture')" id="tab-btn-lecture" class="py-3 px-4 border-b-2 border-[#f4b860] text-[#f4b860] whitespace-nowrap">1. Ghi chú & Bài giảng chi tiết</button>
+        <button onclick="switchClueTab('warmup')" id="tab-btn-warmup" class="py-3 px-4 border-b-2 border-transparent text-[#b0a4c0] hover:text-[#f6efe6] whitespace-nowrap">2. Phản xạ nhanh (3 câu)</button>
+        <button onclick="switchClueTab('lab')" id="tab-btn-lab" class="py-3 px-4 border-b-2 border-transparent text-[#b0a4c0] hover:text-[#f6efe6] whitespace-nowrap">3. Thực chiến Excel</button>
+        <button onclick="switchClueTab('solve')" id="tab-btn-solve" class="py-3 px-4 border-b-2 border-transparent text-[#b0a4c0] hover:text-[#f6efe6] whitespace-nowrap">4. Mở khóa & Chấm MOS</button>
+      </div>
+
+      <div class="p-6 overflow-y-auto flex-1 space-y-5 text-sm">
+        <!-- TAB 1: GHI CHÚ VẬT CHỨNG + BÀI GIẢNG CHUYÊN SÂU (THEO GÀ EXCEL & MOS) -->
+        <div id="tab-lecture" class="space-y-4">
+          <!-- Khôi phục Ghi chú riêng cho từng vật chứng -->
+          <div class="p-4 rounded-xl bg-[#100c1c] border border-[#f4b860]/35 flex flex-col sm:flex-row gap-4 items-start">
+            <div class="flex-1 space-y-1.5">
+              <span class="text-[10px] uppercase tracking-widest text-[#f4b860] font-semibold">Ghi chú hiện trường vật chứng</span>
+              <p id="clue-object-note" class="text-xs md:text-sm text-[#e8dff2] italic leading-relaxed"></p>
+            </div>
+          </div>
+
+          <!-- Nội dung bài giảng 5 phần -->
+          <div id="clue-lecture-content" class="space-y-4 text-[#e8dff2] leading-relaxed text-[13.5px]"></div>
+
+          <!-- Khung tra cứu nhanh YouTube Gà Excel -->
+          <div class="p-4 rounded-xl bg-red-950/25 border border-red-400/35 flex flex-wrap items-center justify-between gap-3">
+            <div class="space-y-0.5">
+              <span class="text-[11px] uppercase tracking-wider text-red-300 font-semibold flex items-center gap-1.5">
+                <i data-lucide="youtube" class="w-4 h-4"></i> Tham khảo thêm trên YouTube (Gà Excel)
+              </span>
+              <p id="clue-yt-keyword" class="text-xs text-[#e8dff2] font-mono-code"></p>
+            </div>
+            <a id="clue-yt-link" href="#" target="_blank" rel="noopener" class="px-4 py-2 rounded-lg bg-red-600/85 hover:bg-red-500 text-white text-xs font-semibold transition flex items-center gap-1.5">
+              Mở tìm kiếm YouTube <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            </a>
+          </div>
+
+          <div class="pt-2 flex justify-end">
+            <button onclick="switchClueTab('warmup')" class="px-5 py-2.5 rounded-lg bg-[#f4b860] text-[#0d0b1a] font-semibold text-xs hover:bg-[#ffd085] transition flex items-center gap-2">
+              Đã nắm bài giảng → Sang Phản xạ nhanh <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 2: PHẢN XẠ 3 CÂU -->
+        <div id="tab-warmup" class="hidden space-y-4">
+          <div id="warmup-questions" class="space-y-4"></div>
+          <div class="flex items-center justify-between pt-2">
+            <span id="warmup-status" class="text-xs text-[#b0a4c0]"></span>
+            <button onclick="checkWarmup()" class="px-5 py-2.5 rounded-lg bg-[#f4b860] text-[#0d0b1a] font-semibold text-xs hover:bg-[#ffd085] transition">
+              Kiểm tra 3 câu
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 3: LAB EXCEL -->
+        <div id="tab-lab" class="hidden space-y-4">
+          <p id="clue-story" class="italic text-[#d6cce6] border-l-2 border-[#f4b860] pl-3"></p>
+          <div class="p-4 rounded-xl bg-[#1e1833] border border-white/10 space-y-2">
+            <p class="text-xs uppercase tracking-wider text-[#f4b860] font-semibold">Yêu cầu bài Lab (Làm trực tiếp trên Excel):</p>
+            <div id="clue-task" class="space-y-1.5 text-[#f6efe6]"></div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-black/30 border border-white/10">
+            <button onclick="document.getElementById('clue-hint-box').classList.toggle('hidden')" class="text-xs text-[#a78bfa] hover:underline">
+              Bị kẹt bước làm? Bấm xem gợi ý công thức
+            </button>
+            <p id="clue-hint-box" class="hidden mt-2 font-mono-code text-xs text-amber-200"></p>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <button onclick="downloadCurrentExcel()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#f4b860] text-[#0d0b1a] font-semibold hover:bg-[#ffd085] transition">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Tải file Excel đề bài (.xlsx)
+            </button>
+            <button onclick="switchClueTab('solve')" class="text-xs text-[#f4b860] hover:underline flex items-center gap-1">
+              Làm xong? Sang Mở khóa <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 4: MỞ KHÓA & CHẤM MOS -->
+        <div id="tab-solve" class="hidden space-y-5">
+          <div class="p-5 rounded-xl bg-[#1e1833] border border-white/10 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="font-semibold text-[#f6efe6] flex items-center gap-2"><i data-lucide="lock" class="w-4 h-4 text-[#f4b860]"></i> Lớp 1: Nhập Mật mã</h4>
+              <span id="layer1-status" class="text-xs text-[#b0a4c0]">Chưa mở</span>
+            </div>
+            <p id="clue-passcode-prompt" class="text-xs text-[#d6cce6]"></p>
+            <div class="flex gap-2">
+              <input id="input-passcode" type="text" placeholder="Nhập mật mã..." class="flex-1 px-4 py-2.5 rounded-lg bg-[#100c1c] border border-white/15 text-[#f6efe6] font-mono-code text-sm focus:outline-none focus:border-[#f4b860]" />
+              <button onclick="verifyPasscode()" class="px-5 py-2.5 rounded-lg bg-[#f4b860] text-[#0d0b1a] font-semibold hover:bg-[#ffd085] transition">Mở khóa</button>
+            </div>
+            <div id="passcode-feedback" class="hidden text-xs p-3 rounded-lg"></div>
+          </div>
+
+          <div class="p-5 rounded-xl bg-[#1e1833] border border-white/10 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="font-semibold text-[#f6efe6] flex items-center gap-2"><i data-lucide="award" class="w-4 h-4 text-[#f4b860]"></i> Lớp 2: Nộp file .xlsx chấm Chuẩn MOS (Hạng S)</h4>
+              <span id="layer2-status" class="text-xs text-[#b0a4c0]">Chưa kiểm định</span>
+            </div>
+            <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[#a78bfa]/45 rounded-xl cursor-pointer bg-[#100c1c]/60 hover:border-[#f4b860] transition">
+              <i data-lucide="upload-cloud" class="w-5 h-5 text-[#f4b860] mb-1"></i>
+              <span class="text-xs text-[#e8dff2]">Chọn hoặc kéo thả file <strong>.xlsx</strong> đã lưu của bạn</span>
+              <input id="input-xlsx-upload" type="file" accept=".xlsx,.xls" class="hidden" onchange="gradeUploadedExcel(event)" />
+            </label>
+            <div id="xlsx-feedback" class="hidden text-xs p-3 rounded-lg"></div>
+          </div>
+
+          <div id="clue-reward-box" class="hidden p-4 rounded-xl bg-emerald-950/50 border border-emerald-400/40 space-y-2">
+            <p class="text-xs uppercase tracking-wider text-emerald-400 font-semibold flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Đã thu thập bằng chứng!
+            </p>
+            <p id="clue-reward-text" class="text-sm text-emerald-100 leading-relaxed"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL TÚI MANH MỐI -->
+  <div id="modal-evidence" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080612]/80 backdrop-blur-sm">
+    <div class="unfold-anim w-full max-w-lg rounded-2xl bg-[#161226] border border-[#f4b860]/45 p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <h3 class="font-display text-xl text-[#f6efe6]">Túi Bằng Chứng & Ghi Chú</h3>
+        <button onclick="closeModal('modal-evidence')" class="text-[#b0a4c0] hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div id="evidence-list" class="space-y-3 max-h-[60vh] overflow-y-auto text-sm"></div>
+    </div>
+  </div>
+
+  <!-- MODAL NẠP JSON -->
+  <div id="modal-import" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080612]/80 backdrop-blur-sm">
+    <div class="unfold-anim w-full max-w-lg rounded-2xl bg-[#161226] border border-[#a78bfa]/45 p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <h3 class="font-display text-xl text-[#f6efe6]">Nạp Hồ Sơ Vụ Án Mới (JSON)</h3>
+        <button onclick="closeModal('modal-import')" class="text-[#b0a4c0] hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <textarea id="import-json-input" rows="6" placeholder='{ "id": "case_02", ... }' class="w-full p-3 rounded-lg bg-[#100c1c] border border-white/15 text-xs font-mono-code text-[#f6efe6]"></textarea>
+      <div class="flex justify-end">
+        <button onclick="importCustomCase()" class="px-5 py-2 rounded-lg bg-[#f4b860] text-[#0d0b1a] text-xs font-semibold hover:bg-[#ffd085]">Nạp hồ sơ</button>
+      </div>
+      <p id="import-feedback" class="hidden text-xs"></p>
+    </div>
+  </div>
+
+  <!-- MODAL NẠP 4 ẢNH BỐI CẢNH -->
+  <div id="modal-assets" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080612]/80 backdrop-blur-sm">
+    <div class="unfold-anim w-full max-w-lg rounded-2xl bg-[#161226] border border-[#7dd3fc]/45 p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <h3 class="font-display text-xl text-[#f6efe6]">Nạp Nhanh 4 Ảnh Bối Cảnh</h3>
+        <button onclick="closeModal('modal-assets')" class="text-[#b0a4c0] hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <p class="text-xs text-[#b0a4c0]">Nếu chạy trên CodeSandbox, hãy chọn trực tiếp 4 ảnh Steam Indie bạn vừa tải về:</p>
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <label class="p-3 rounded-xl bg-[#1e1833] border border-white/10 hover:border-[#f4b860] cursor-pointer text-center">
+          <span class="block text-[#f4b860] font-semibold mb-1">1. Title Screen</span>
+          <span class="text-[11px] text-[#b0a4c0]">Chọn title.png</span>
+          <input type="file" accept="image/*" class="hidden" onchange="loadAssetImg(event, 'title')">
+        </label>
+        <label class="p-3 rounded-xl bg-[#1e1833] border border-white/10 hover:border-[#f4b860] cursor-pointer text-center">
+          <span class="block text-[#f4b860] font-semibold mb-1">2. Cảnh 1 (Khoang VIP)</span>
+          <span class="text-[11px] text-[#b0a4c0]">Chọn scene1.png</span>
+          <input type="file" accept="image/*" class="hidden" onchange="loadAssetImg(event, 'scene0')">
+        </label>
+        <label class="p-3 rounded-xl bg-[#1e1833] border border-white/10 hover:border-[#f4b860] cursor-pointer text-center">
+          <span class="block text-[#f4b860] font-semibold mb-1">3. Cảnh 2 (Toa Hành Lý)</span>
+          <span class="text-[11px] text-[#b0a4c0]">Chọn scene2.png</span>
+          <input type="file" accept="image/*" class="hidden" onchange="loadAssetImg(event, 'scene1')">
+        </label>
+        <label class="p-3 rounded-xl bg-[#1e1833] border border-white/10 hover:border-[#f4b860] cursor-pointer text-center">
+          <span class="block text-[#f4b860] font-semibold mb-1">4. Cảnh 3 (Buồng Lái)</span>
+          <span class="text-[11px] text-[#b0a4c0]">Chọn scene3.png</span>
+          <input type="file" accept="image/*" class="hidden" onchange="loadAssetImg(event, 'scene2')">
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT ENGINE ==================== -->
+  <script>
+    // =========================================================================
+    // 1. DỮ LIỆU VỤ ÁN 1 (VÙNG TƯƠNG TÁC KHỚP ẢNH + MANH MỐI PHỤ + BÀI GIẢNG SÂU)
+    // =========================================================================
+    const CASE_01 = {
+      id: "case_01_express",
+      season: "Mùa 1 • Vụ án 01",
+      title: "The Midnight Express",
+      subtitle: "Gà Excel & MOS Core: Table, Filter, SUBTOTAL, SUMIFS, VLOOKUP/XLOOKUP",
+      description: "Cuốn sổ cái gỗ gụ chứa mã định tuyến Orient Line biến mất giữa đêm. Khám phá 3 toa tàu, soi manh mối phụ, đối thoại với 4 nhân chứng và phá án bằng Excel.",
+      locked: false,
+      scenes: [
+        {
+          id: "scene_vip", title: "Khoang Hạng Nhất", badge: "Cảnh 1 / 3 • Khoang VIP",
+          img: "scene1.png",
+          // Mỗi vùng có tọa độ tâm (x,y) và kích thước vùng sáng (w,h) bao quanh đúng người/vật
+          spots: [
+            { type: "char", id: "arthur", x: 13.5, y: 60, w: 12, h: 64, label: "💬 Arthur Vance (Trưởng tàu)" },
+            { type: "clue", id: "c1_d1", x: 28.5, y: 89, w: 14, h: 19, label: "🧳 Ngày 1: Chiếc Vali Da (Table, Filter, SUBTOTAL)" },
+            { type: "char", id: "clara", x: 41, y: 66, w: 11, h: 42, label: "💬 Clara Sterling (Kiểm toán viên)" },
+            { type: "clue", id: "c1_d2", x: 47.5, y: 69, w: 8, h: 10, label: "📖 Ngày 2: Sổ Biên Lai trên bàn (SUMIFS, COUNTIFS)" },
+            { type: "lore", id: "lore_coffee", x: 54, y: 67, w: 6, h: 10, label: "☕ Tách cà phê còn bốc khói (Soi manh mối phụ)" },
+            { type: "lore", id: "lore_rack", x: 21, y: 15, w: 17, h: 12, label: "🎒 Hành lý trên giá cao (Soi manh mối phụ)" },
+            { type: "door", targetScene: 1, x: 94.5, y: 52, w: 9, h: 72, label: "🚪 Mở cửa sang Toa Hành Lý (Cảnh 2) →" }
+          ]
+        },
+        {
+          id: "scene_luggage", title: "Toa Hành Lý & Lưu Trữ", badge: "Cảnh 2 / 3 • Khoang Lưu Trữ",
+          img: "scene2.png",
+          spots: [
+            { type: "door", targetScene: 0, x: 6, y: 52, w: 10, h: 72, label: "← Quay lại Khoang Hạng Nhất (Cảnh 1)" },
+            { type: "char", id: "julian", x: 35, y: 60, w: 13, h: 62, label: "💬 Julian Reed (Nhân viên soát vé)" },
+            { type: "lore", id: "lore_ticket", x: 24, y: 84, w: 9, h: 12, label: "🎫 Mảnh vé rách dưới sàn (Soi manh mối phụ)" },
+            { type: "clue", id: "c1_d3", x: 69, y: 62, w: 18, h: 46, label: "🗄️ Ngày 3: Tủ Danh Bạ Khoang VIP (VLOOKUP / XLOOKUP)" },
+            { type: "door", targetScene: 2, x: 94, y: 52, w: 10, h: 72, label: "🚂 Mở cửa sang Buồng Lái Đầu Tàu (Cảnh 3) →" }
+          ]
+        },
+        {
+          id: "scene_locomotive", title: "Buồng Lái Đầu Tàu", badge: "Cảnh 3 / 3 • Buồng Lái",
+          img: "scene3.png",
+          spots: [
+            { type: "lore", id: "lore_gauge", x: 26, y: 69, w: 18, h: 24, label: "⏲️ Bảng đồng hồ áp suất (Soi manh mối phụ)" },
+            { type: "char", id: "victor", x: 52, y: 58, w: 14, h: 60, label: "💬 Victor Hale (Người lái tàu)" },
+            { type: "clue", id: "c1_d4", x: 75, y: 67, w: 16, h: 36, label: "🔐 Ngày 4 (PHÁ ÁN): Két Sắt Niêm Phong" },
+            { type: "door", targetScene: 1, x: 94, y: 52, w: 10, h: 72, label: "← Quay lại Toa Hành Lý (Cảnh 2)" }
+          ]
+        }
+      ],
+      lores: {
+        lore_coffee: {
+          id: "lore_coffee", title: "Tách Cà Phê Còn Bốc Khói",
+          desc: "Tách cà phê đen trên bàn của Clara Sterling vẫn còn bốc khói ấm, nhưng mặt trà/cà phê chưa hề vơi đi giọt nào. Ngay cạnh đó là một tấm danh thiếp bị úp ngược có in logo một tập đoàn đầu tư nước ngoài.",
+          deduction: "Suy luận: Clara nói cô ta ngồi làm việc suốt từ 23:00, nhưng tách cà phê mới được rót vài phút trước. Có vẻ cô ta vừa rời khỏi bàn ngay trước khi bạn bước vào khoang."
+        },
+        lore_rack: {
+          id: "lore_rack", title: "Vali Trên Giá Hành Lý Cao",
+          desc: "Tất cả hành khách hạng nhất đều để hành lý gọn gàng trên giá cao bằng đồng. Chỉ duy nhất chiếc vali da cũ kỹ dưới sàn cạnh ông Arthur là nặng tới mức không ai nhấc lên giá nổi.",
+          deduction: "Suy luận: Chiếc vali dưới sàn chắc chắn chứa vật gì đó nặng hơn quần áo thông thường — có thể là hồ sơ hoặc hộp kim loại."
+        },
+        lore_ticket: {
+          id: "lore_ticket", title: "Mảnh Vé Tàu Rách Dưới Sàn",
+          desc: "Một góc vé hạng nhất bị xé vội rơi gần đống hành lý. Trên đó vẫn còn rõ dấu mực đóng ở Ga 3 lúc 22:55 và dòng chữ mờ 'Ưu tiên bảo mật - Không ghi tên công khai'.",
+          deduction: "Suy luận: Hành khách bí ẩn lên ở Ga 3 đã được ban quản trị tàu cấp quyền ẩn danh ngay từ trước khi lên tàu."
+        },
+        lore_gauge: {
+          id: "lore_gauge", title: "Bảng Đồng Hồ Áp Suất Đầu Tàu",
+          desc: "Kim ghi tốc độ trên băng giấy tự động cho thấy đoàn tàu đã giảm tốc độ đột ngột xuống còn 15 km/h trong đúng 2 phút lúc 23:30 — ngay đoạn cầu cạn không có nhà ga.",
+          deduction: "Suy luận: Không phải tàu gặp sự cố. Victor Hale đã cố tình đi chậm lại để ai đó có thời gian di chuyển một vật nặng từ khoang hành khách lên Buồng Lái mà không bị xóc."
+        }
+      },
+      characters: {
+        arthur: {
+          id: "arthur", name: "Arthur Vance", role: "Trưởng tàu kỳ cựu",
+          portraitScene: 0, portraitPos: "14% 33%",
+          intro: "Chào cô. Tôi đã phụ trách tuyến Midnight Express 20 năm và chưa từng để thất lạc hồ sơ nào. Cuốn sổ cái biến mất ngay khi tàu rời Ga 3.",
+          questions: [
+            { label: "Ông có thấy hành lý nào khả nghi lên ở Ga 3 không?", reply: "Tôi chỉ nhớ có một hành khách Toa A yêu cầu tự xách chiếc vali rất nặng. Chiếc vali da đó đang nằm ngay dưới sàn cạnh tôi, cô cứ kiểm tra bảng kê hành lý bên trong." },
+            { label: "Sổ thu chi tiền mặt trên bàn giữa có gì bất thường không?", reply: "Tất cả đều là tiền vé nâng hạng... à, có vài khoản tiền mặt thu gấp đêm nay tôi chưa kịp đối chiếu. Nếu cô rành Excel thì xem cuốn sổ dưới ánh đèn bàn giúp tôi." }
+          ],
+          confront: {
+            requiresClue: "c1_d2",
+            buttonLabel: "Trình bằng chứng: Toa A thu tới 84,500,000 VNĐ tiền mặt!",
+            reply: "(Arthur thở dài, ánh mắt chùng xuống) Cô sắc sảo thật. Đúng là tôi đã nhận khoản cọc tiền mặt lớn đó để giữ bí mật danh tính cho hành khách HK-019. Nhưng cô đừng vội kết tội — hãy bấm vào cánh cửa gỗ bên phải sang Toa Hành Lý để kiểm tra Tủ Danh Bạ đi."
+          }
+        },
+        clara: {
+          id: "clara", name: "Clara Sterling", role: "Kiểm toán viên hội đồng quản trị",
+          portraitScene: 0, portraitPos: "41% 45%",
+          intro: "Tốt lắm, ít nhất cũng có người biết đọc sổ sách ở đây. Ai nắm được mã trong cuốn sổ cái trước 6 giờ sáng sẽ quyết định quyền sáp nhập tuyến đường sắt này.",
+          questions: [
+            { label: "Cô nghi ngờ ai là người lấy cuốn sổ?", reply: "Cậu soát vé Julian Reed bên Toa Hành Lý, hoặc chính lão lái tàu Victor Hale ở Buồng Lái. Hai người đó đã nói chuyện rất lâu trước giờ tàu chạy." },
+            { label: "Cô đã ở đâu lúc 23:00?", reply: "Tôi ngồi ngay tại bàn này rà soát báo cáo tài chính quý 4. Đèn bàn của tôi chưa từng tắt." }
+          ],
+          confront: {
+            requiresClue: "c1_d3",
+            buttonLabel: "Trình bằng chứng: HK-019 ở phòng P304 — ngay sát phòng cô!",
+            reply: "(Clara thoáng giật mình, tay siết chặt cây bút) P304?! Khoan đã... phòng đó trong danh sách của tôi đáng lẽ bỏ trống! Tại sao lại có người bí mật lên tàu ở Ga 3 và ở ngay sát phòng tôi?!"
+          }
+        },
+        julian: {
+          id: "julian", name: "Julian Reed", role: "Nhân viên soát vé (Toa Hành Lý)",
+          portraitScene: 1, portraitPos: "35% 33%",
+          intro: "Cô sang đây kiểm tra Tủ Danh Bạ phải không? Xin đừng tin lời cô Sterling — tôi không hề lấy cuốn sổ nào cả!",
+          questions: [
+            { label: "Tủ Danh Bạ bên cạnh anh chứa thông tin gì?", reply: "Chứa toàn bộ mã hành khách và số phòng thực tế. Cô có thể ghép nó với danh sách nghi phạm bằng VLOOKUP hoặc XLOOKUP để biết HK-019 ở phòng nào." },
+            { label: "Phía sau cánh cửa bên phải là đâu?", reply: "Là Buồng Lái Đầu Tàu, nơi ông Victor Hale đang trực. Lúc 23:30 tôi thấy ông ấy mang một chiếc hộp sắt nặng vào trong đó." }
+          ],
+          confront: {
+            requiresClue: "c1_d3",
+            buttonLabel: "Trình bằng chứng: Tôi đã tra ra HK-019 ở phòng P304",
+            reply: "(Julian hạ giọng thì thầm) Đúng rồi... nhưng tôi đã thề với cố chủ tịch là không tiết lộ thân phận thật của P304 cho đến khi cô mở được Két Sắt ở Buồng Lái. Hãy mở cửa phải sang gặp ông Victor Hale đi!"
+          }
+        },
+        victor: {
+          id: "victor", name: "Victor Hale", role: "Người lái tàu (Buồng Lái)",
+          portraitScene: 2, portraitPos: "52% 33%",
+          intro: "Đứng vững nhé, tàu đang chạy qua khu ngoại ô! Cô là người điều tra vụ cuốn sổ cái phải không? Chiếc két sắt niêm phong nằm ngay bên phải bảng điều khiển kia.",
+          questions: [
+            { label: "Tại sao chiếc két sắt lại được đưa lên Buồng Lái?", reply: "Vì đây là nơi duy nhất trên tàu chỉ mở được bằng mật mã từ tổng các giao dịch bất thường đêm nay. Ai không biết đọc dữ liệu tài chính sẽ không bao giờ mở nổi." },
+            { label: "Ông có biết gì về Clara Sterling không?", reply: "Cô ta là kiểm toán viên giỏi, nhưng cô ta không biết rằng cố chủ tịch đã để lại một bản phụ lục bí mật để bảo vệ nhân viên đường sắt trước khi ông ấy qua đời." }
+          ],
+          confront: {
+            requiresClue: "c1_d4",
+            buttonLabel: "Trình bằng chứng: Đã mở Két Sắt (67,200,000 VNĐ)!",
+            reply: "(Victor mỉm cười đầy tự hào) Xuất sắc! Cô đã tự tay bóc tách toàn bộ sự thật. Cuốn sổ cái chưa từng bị trộm — chính tôi, Arthur và Julian đã phối hợp cất nó vào két sắt vì phát hiện tập đoàn đối thủ cài gián điệp hòng mua rẻ tuyến tàu. Còn hành khách HK-019 ở phòng P304? Đó chính là luật sư đại diện mang theo di chúc thật để giữ lại công ty! Hẹn gặp cô ở Vụ án 02."
+          }
+        }
+      },
+      clues: {
+        c1_d1: {
+          id: "c1_d1", day: "Ngày 1", title: "Chiếc Vali Da (Bảng Kê Hành Lý)",
+          mosTag: "MO-210: 1.4, 3.1 & 4.1 • Lộ trình Gà Excel Bài 1–3",
+          objectNote: "Chiếc vali da nâu cũ nằm ngay dưới sàn cạnh Trưởng tàu Arthur. Khóa đồng đã bị gài chặt, kẹp bên hông là thẻ hành lý ghi 'Chỉ mở khi đối chiếu xong bảng kê Toa A - Ga 3'.",
+          ytKeyword: "Gà Excel định dạng bảng Table Filter và hàm SUBTOTAL",
+          lectureHtml: `
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-[#f4b860]/30 space-y-2">
+              <h4 class="text-[#f4b860] font-semibold">1. Mục tiêu MOS & Ứng dụng Tài chính</h4>
+              <p>Khi nhận một file sao kê ngân hàng hoặc bảng kê tài sản hàng nghìn dòng, thao tác chuẩn đầu tiên theo cả giáo trình <strong>Gà Excel</strong> lẫn kỳ thi <strong>MOS MO-210</strong> là biến vùng dữ liệu rời rạc thành <strong>Excel Table</strong>, sau đó dùng <strong>Filter</strong> và hàm <strong>SUBTOTAL</strong> để thống kê chính xác phần dữ liệu đã lọc.</p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-white/10 space-y-2.5">
+              <h4 class="text-[#a78bfa] font-semibold">2. Ví dụ minh họa trực quan</h4>
+              <p class="text-xs text-[#cbbba8]">Giả sử bạn lọc cột <strong>Phòng ban = "Tài chính"</strong> trong bảng lương sau (dòng Nhân sự bị ẩn đi):</p>
+              <table class="lecture-table">
+                <tr><th>Mã NV</th><th>Phòng ban</th><th>Lương (triệu)</th><th>Trạng thái sau Filter</th></tr>
+                <tr><td>NV01</td><td>Tài chính</td><td>18</td><td class="text-emerald-400">Hiển thị</td></tr>
+                <tr class="opacity-45"><td>NV02</td><td>Nhân sự</td><td>35</td><td>Bị ẩn bởi Filter</td></tr>
+                <tr><td>NV03</td><td>Tài chính</td><td>24</td><td class="text-emerald-400">Hiển thị</td></tr>
+              </table>
+              <p class="text-xs">• Nếu dùng <code>=MAX(C2:C4)</code> → Ra <strong>35</strong> (SAI, vì vẫn tính cả dòng bị ẩn!).<br/>• Nếu dùng <code>=SUBTOTAL(104, C2:C4)</code> → Ra <strong>24</strong> (CHÍNH XÁC).</p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-white/10 space-y-2">
+              <h4 class="text-[#7dd3fc] font-semibold">3. Giải phẫu cú pháp & Thao tác trên Excel</h4>
+              <ul class="list-disc pl-5 space-y-1.5 text-xs md:text-[13px]">
+                <li><strong>Bước tạo Table:</strong> Bấm 1 ô bất kỳ trong bảng → Thẻ <em>Insert → Table</em> (hoặc phím tắt <code class="text-[#f4b860]">Ctrl + T</code> / Mac: <code>Cmd + T</code>) → Đảm bảo có dấu tích ở <em>My table has headers</em> → OK.</li>
+                <li><strong>Bật/tắt Filter nhanh:</strong> Phím tắt <code class="text-[#f4b860]">Ctrl + Shift + L</code> (Mac: <code>Cmd + Shift + F</code>).</li>
+                <li><strong>Cú pháp SUBTOTAL:</strong> <code class="text-[#f4b860]">=SUBTOTAL(function_num, ref1)</code><br/>
+                Các mã số hay dùng nhất: <code>109</code> (SUM - Tính tổng), <code>104</code> (MAX - Lớn nhất), <code>105</code> (MIN - Nhỏ nhất), <code>103</code> (COUNTA - Đếm).</li>
+              </ul>
+            </div>
+
+            <div class="p-4 rounded-xl bg-red-950/30 border border-red-400/30 space-y-1 text-xs">
+              <h4 class="text-red-300 font-semibold">4. Bẫy kinh điển khi đi thi MOS</h4>
+              <p>Đề thi MOS hay yêu cầu tạo Table rồi đặt tên bảng (vào thẻ <em>Table Design → Table Name</em>). Ngoài ra, tuyệt đối không viết công thức <code>SUM</code> hay <code>MAX</code> ở ngay dưới bảng đang lọc — hãy luôn dùng <code>SUBTOTAL</code> hoặc bật <em>Total Row</em> trong Table Design.</p>
+            </div>
+          `,
+          warmup: [
+            { q: "Phím tắt chuẩn MOS để chuyển vùng dữ liệu thành Excel Table?", options: ["Ctrl + T", "Ctrl + E", "Ctrl + Shift + T"], correct: 0 },
+            { q: "Khi đang lọc (Filter), hàm nào tìm giá trị lớn nhất mà BỎ QUA các dòng bị ẩn?", options: ["=MAX(E2:E20)", "=SUBTOTAL(104, E2:E20)", "=LARGE(E2:E20, 1)"], correct: 1 },
+            { q: "Mã function_num = 109 trong hàm SUBTOTAL tương ứng với phép tính nào?", options: ["MAX (Lớn nhất)", "SUM (Tính tổng)", "AVERAGE (Trung bình)"], correct: 1 }
+          ],
+          story: "Bảng kê hành lý có lẫn cả Toa A, Toa B và 3 nhà ga khác nhau. Đừng để bị đánh lừa bởi chiếc vali 55 kg ở Toa B!",
+          taskHtml: `
+            <p>1. Tải file <strong>VuAn1_Ngay1_HanhLy.xlsx</strong> và chuyển bảng thành <strong>Excel Table</strong> (<code>Ctrl + T</code>).</p>
+            <p>2. Lọc đồng thời: <strong>Toa = "Toa A"</strong> và <strong>Ga_Len = "Ga 3"</strong>.</p>
+            <p>3. Dùng hàm <strong>=SUBTOTAL(104, ...)</strong> tìm trọng lượng vali nặng nhất trong nhóm vừa lọc.</p>
+            <p>4. Tìm <strong>Mã Hành Khách</strong> sở hữu chiếc vali đó để mở khóa.</p>
+          `,
+          hint: "Sau khi lọc Toa A + Ga 3, gõ =SUBTOTAL(104, E2:E10) sẽ ra 48.5 kg → Mã hành khách là HK-019.",
+          passcodePrompt: "Nhập Mã Hành Khách nghi phạm (VD: HK-001):",
+          answer: "HK-019",
+          mosCheck: { requiredFormulas: ["SUBTOTAL", "MAX", "LARGE"], expectedValue: 48.5, description: "Cần có công thức SUBTOTAL(104,...) hoặc MAX ra kết quả 48.5" },
+          rewardClue: "Bằng chứng #1: Hành khách mã HK-019 (Toa A, lên ở Ga 3) mang chiếc vali nặng 48.5 kg.",
+          excelFileName: "VuAn1_Ngay1_HanhLy.xlsx", excelGenerator: "case1_day1"
+        },
+        c1_d2: {
+          id: "c1_d2", day: "Ngày 2", title: "Sổ Biên Lai Tiền Mặt (Bàn Giữa)",
+          mosTag: "MO-210: 4.2 • Lộ trình Gà Excel: SUMIFS & COUNTIFS",
+          objectNote: "Cuốn sổ bìa da mở sẵn dưới ánh đèn bàn của Clara Sterling. Trang cuối có nhiều khoản thu tiền mặt được gạch chân gấp gáp bằng bút chì.",
+          ytKeyword: "Gà Excel hàm SUMIFS COUNTIFS tính tổng nhiều điều kiện",
+          lectureHtml: `
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-[#f4b860]/30 space-y-2">
+              <h4 class="text-[#f4b860] font-semibold">1. Mục tiêu MOS & Ứng dụng Tài chính</h4>
+              <p>Trong Kế toán và Phân tích tài chính, 80% báo cáo tổng hợp doanh thu – chi phí theo chi nhánh, tháng, hoặc phương thức thanh toán đều dùng cặp hàm <strong>SUMIFS</strong> (tính tổng nhiều điều kiện) và <strong>COUNTIFS</strong> (đếm nhiều điều kiện).</p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-white/10 space-y-2.5">
+              <h4 class="text-[#a78bfa] font-semibold">2. Ví dụ minh họa trực quan</h4>
+              <table class="lecture-table">
+                <tr><th>Cột A (Chi nhánh)</th><th>Cột B (Thanh toán)</th><th>Cột C (Doanh thu)</th></tr>
+                <tr><td>HCM</td><td>Tien mat</td><td>10,000,000</td></tr>
+                <tr><td>HCM</td><td>Chuyen khoan</td><td>25,000,000</td></tr>
+                <tr><td>HCM</td><td>Tien mat</td><td>15,000,000</td></tr>
+              </table>
+              <p class="text-xs">Công thức tính tổng doanh thu <strong>HCM</strong> trả bằng <strong>Tien mat</strong>:<br/>
+              <code class="text-[#f4b860]">=SUMIFS(C2:C4, A2:A4, "HCM", B2:B4, "Tien mat")</code> → Kết quả: <strong>25,000,000</strong>.</p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-white/10 space-y-2 text-xs md:text-[13px]">
+              <h4 class="text-[#7dd3fc] font-semibold">3. Giải phẫu từng tham số</h4>
+              <p class="font-mono-code bg-black/50 p-2 rounded text-[#f4b860]">=SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2])</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li><strong>sum_range:</strong> Cột chứa con số cần cộng (khác với SUMIF, trong SUMIFS cột này luôn đứng <strong>đầu tiên</strong>).</li>
+                <li><strong>criteria_range1:</strong> Cột chứa điều kiện 1 (VD: cột Toa).</li>
+                <li><strong>criteria1:</strong> Giá trị cần lọc. Nếu là chữ phải đặt trong ngoặc kép <code>"Toa A"</code>; nếu là điều kiện so sánh số cũng đặt trong ngoặc kép <code>"&gt;1000000"</code>.</li>
+              </ul>
+            </div>
+
+            <div class="p-4 rounded-xl bg-red-950/30 border border-red-400/30 space-y-1 text-xs">
+              <h4 class="text-red-300 font-semibold">4. Bẫy kinh điển khi đi thi MOS</h4>
+              <p><strong>Lỗi #VALUE!:</strong> Xảy ra khi kích thước các vùng không khớp nhau (VD: <code>E2:E11</code> nhưng cột điều kiện lại kéo nhầm thành <code>B2:B10</code>). <strong>Mẹo:</strong> Luôn kiểm tra số dòng đầu và dòng cuối của mọi vùng chọn phải giống hệt nhau.</p>
+            </div>
+          `,
+          warmup: [
+            { q: "Trong hàm SUMIFS, tham số đầu tiên bắt buộc là gì?", options: ["Vùng điều kiện 1", "Vùng chứa số cần tính tổng (sum_range)", "Tiêu chí lọc"], correct: 1 },
+            { q: "Nếu vùng tổng chọn E2:E20 nhưng vùng điều kiện lỡ chọn B2:B19, Excel báo lỗi gì?", options: ["#VALUE!", "#DIV/0!", "#NAME?"], correct: 0 },
+            { q: "Muốn đếm số giao dịch thỏa mãn 2 điều kiện cùng lúc, dùng hàm nào?", options: ["COUNT", "COUNTIF", "COUNTIFS"], correct: 2 }
+          ],
+          story: "Sổ thu chi của ông Arthur có lẫn chuyển khoản, thẻ tín dụng và tiền mặt của cả 3 toa. Hãy tính chính xác lượng tiền mặt bất thường tại Toa A.",
+          taskHtml: `
+            <p>1. Tải file <strong>VuAn1_Ngay2_BienLai.xlsx</strong>.</p>
+            <p>2. Dùng <strong>COUNTIFS</strong> đếm số biên lai ở <strong>"Toa A"</strong> trả bằng <strong>"Tien mat"</strong>.</p>
+            <p>3. Dùng <strong>SUMIFS</strong> tính tổng cột <strong>So_Tien_VND</strong> thỏa mãn: <strong>Toa = "Toa A"</strong> và <strong>Phuong_Thuc = "Tien mat"</strong>.</p>
+            <p>4. Nhập tổng số tiền để mở khóa, sau đó bấm vào <strong>Arthur Vance</strong> để đối chất!</p>
+          `,
+          hint: '=SUMIFS(E2:E11, B2:B11, "Toa A", D2:D11, "Tien mat") → Kết quả: 84500000',
+          passcodePrompt: "Nhập tổng tiền mặt của Toa A (viết liền không dấu phẩy):",
+          answer: "84500000",
+          mosCheck: { requiredFormulas: ["SUMIFS"], expectedValue: 84500000, description: "Phải có công thức SUMIFS tính ra đúng 84500000" },
+          rewardClue: "Bằng chứng #2: Tổng tiền mặt thu tại Toa A là 84,500,000 VNĐ! Hãy bấm vào Arthur Vance để Trình bằng chứng.",
+          excelFileName: "VuAn1_Ngay2_BienLai.xlsx", excelGenerator: "case1_day2"
+        },
+        c1_d3: {
+          id: "c1_d3", day: "Ngày 3", title: "Tủ Danh Bạ Khoang VIP (Toa Hành Lý)",
+          mosTag: "MO-210: 4.3 • Lộ trình Gà Excel: VLOOKUP & XLOOKUP",
+          objectNote: "Chiếc tủ gỗ cao 4 ngăn có tay nắm đồng trong Toa Hành Lý. Ngăn thứ 2 chứa danh bạ gốc đối chiếu giữa Mã Hành Khách và Số Phòng thực tế.",
+          ytKeyword: "Gà Excel hướng dẫn hàm VLOOKUP XLOOKUP từ cơ bản đến nâng cao",
+          lectureHtml: `
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-[#f4b860]/30 space-y-2">
+              <h4 class="text-[#f4b860] font-semibold">1. Mục tiêu MOS & Ứng dụng Tài chính</h4>
+              <p>Hàm tra cứu là kỹ năng "sống còn" khi đi làm tài chính: giúp ghép thông tin từ 2 sheet khác nhau (VD: ghép <em>Mã cổ phiếu</em> để lấy <em>Giá đóng cửa</em>, hoặc ghép <em>Mã khách hàng</em> để lấy <em>Hạn mức nợ</em>).</p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-white/10 space-y-2.5 text-xs md:text-[13px]">
+              <h4 class="text-[#a78bfa] font-semibold">2. Giải phẫu cú pháp VLOOKUP & XLOOKUP</h4>
+              <p class="font-mono-code bg-black/50 p-2 rounded text-[#f4b860]">=VLOOKUP(lookup_value, table_array, col_index_num, 0)</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li><strong>lookup_value:</strong> Ô chứa mã cần đi tìm (VD: <code>A2</code>).</li>
+                <li><strong>table_array:</strong> Bảng dữ liệu nguồn (bắt buộc cột đầu tiên bên trái phải chứa mã tìm). <strong>Nhớ bấm F4</strong> để khóa vùng thành <code>$A$2:$C$7</code>!</li>
+                <li><strong>col_index_num:</strong> Số thứ tự cột muốn lấy kết quả (đếm từ trái sang phải của bảng nguồn: cột 1, 2, 3...).</li>
+                <li><strong>Số 0 (FALSE):</strong> Tìm chính xác tuyệt đối.</li>
+              </ul>
+              <p class="font-mono-code bg-black/50 p-2 rounded text-[#7dd3fc] mt-2">=XLOOKUP(lookup_value, lookup_array, return_array)</p>
+              <p class="text-xs text-[#cbbba8]"><em>Mẹo Gà Excel:</em> Nếu dùng Excel 365/2021, <strong>XLOOKUP</strong> gọn và ít lỗi hơn vì chỉ cần chọn 1 cột tìm và 1 cột trả về, không cần đếm số thứ tự cột.</p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-red-950/30 border border-red-400/30 space-y-1 text-xs">
+              <h4 class="text-red-300 font-semibold">3. Bẫy kinh điển khi đi thi MOS</h4>
+              <p><strong>Quên bấm F4 (cố định dấu $):</strong> Khi kéo công thức từ dòng 2 xuống dòng 5, bảng tra cứu bị trượt xuống theo khiến các dòng dưới báo lỗi <code>#N/A</code> dù mã vẫn có trong bảng!</p>
+            </div>
+          `,
+          warmup: [
+            { q: "Phím tắt để thêm dấu $ cố định vùng bảng tra cứu khi viết công thức?", options: ["F2", "F4", "F8"], correct: 1 },
+            { q: "Tham số cuối cùng bằng 0 trong VLOOKUP có ý nghĩa gì?", options: ["Tìm chính xác tuyệt đối", "Tìm gần đúng", "Lấy cột đầu tiên"], correct: 0 },
+            { q: "Lỗi #N/A khi kéo công thức VLOOKUP xuống các dòng dưới thường do đâu?", options: ["Quên bấm F4 cố định bảng tra cứu khiến vùng bị trôi", "Chia cho số 0", "Sai font chữ"], correct: 0 }
+          ],
+          story: "Tủ Danh Bạ nằm trong Toa Hành Lý. Hãy ghép mã nghi phạm với sổ Danh Bạ để biết HK-019 đang ở số phòng nào.",
+          taskHtml: `
+            <p>1. Tải file <strong>VuAn1_Ngay3_TraCuu.xlsx</strong> (gồm 2 sheet).</p>
+            <p>2. Tại sheet <strong>Can_Tra_Cuu</strong>, dùng <strong>VLOOKUP</strong> (nhớ cố định bảng bằng <code>$</code>) hoặc <strong>XLOOKUP</strong> điền <strong>So_Phong</strong> cho cả 4 nghi phạm.</p>
+            <p>3. Nhập số phòng của <strong>HK-019</strong>, sau đó quay lại đối chất với <strong>Clara Sterling</strong> và <strong>Julian Reed</strong>!</p>
+          `,
+          hint: "=VLOOKUP(A2, Danh_Ba_Toa!$A$2:$C$7, 3, 0) → Phòng của HK-019 là P304.",
+          passcodePrompt: "Nhập Số Phòng của HK-019 (VD: P101):",
+          answer: "P304",
+          mosCheck: { requiredFormulas: ["VLOOKUP", "XLOOKUP", "INDEX"], expectedValue: "P304", description: "Phải dùng VLOOKUP / XLOOKUP / INDEX trả về đúng P304" },
+          rewardClue: "Bằng chứng #3: HK-019 ở phòng P304 — sát vách phòng Clara Sterling! Hãy đối chất với Clara/Julian và sang Cảnh 3 (Buồng Lái).",
+          excelFileName: "VuAn1_Ngay3_TraCuu.xlsx", excelGenerator: "case1_day3"
+        },
+        c1_d4: {
+          id: "c1_d4", day: "Ngày 4 • PHÁ ÁN", title: "Két Sắt Niêm Phong (Buồng Lái)",
+          mosTag: "Case Tích Hợp • Tổng ôn MO-210",
+          requires: ["c1_d1", "c1_d2", "c1_d3"],
+          objectNote: "Chiếc két sắt bằng thép nặng đặt ngay góc phải Buồng Lái. Mặt khóa đồng phát sáng nhẹ, yêu cầu nhập đúng tổng giá trị dòng tiền bất thường để mở niêm phong.",
+          ytKeyword: "Gà Excel bài tập thực hành tổng hợp Excel cơ bản",
+          lectureHtml: `
+            <div class="p-4 rounded-xl bg-[#1e1833] border border-[#f4b860]/30 space-y-2">
+              <h4 class="text-[#f4b860] font-semibold">Tổng ôn trước giờ Phá án (Checklist MOS MO-210)</h4>
+              <p>Ngày 4 là bài kiểm tra tổng hợp độ chính xác và kỷ luật thao tác sau 3 ngày học:</p>
+              <ul class="list-disc pl-5 space-y-1.5 text-xs md:text-[13px]">
+                <li>Đọc kỹ tên cột và chuỗi điều kiện (<code>"HK-019"</code> và <code>"Nghi ngo"</code> — không thừa dấu cách).</li>
+                <li>Đảm bảo mọi vùng chọn trong <code>SUMIFS</code> đều khớp số dòng (từ dòng 2 đến dòng 10).</li>
+                <li>Luôn bấm <strong>Ctrl + S</strong> lưu file Excel trước khi kéo thả lên chấm Hạng S.</li>
+              </ul>
+            </div>
+          `,
+          warmup: [
+            { q: "Trong bài thi MOS, nếu gõ tay con số đáp án thay vì viết công thức, bạn được mấy điểm câu đó?", options: ["0 điểm", "50% điểm", "100% điểm"], correct: 0 },
+            { q: "SUMIFS với 2 điều kiện cần bao nhiêu tham số trong ngoặc?", options: ["3 tham số", "5 tham số", "4 tham số"], correct: 1 },
+            { q: "Thao tác nào giúp bảng dữ liệu tự động mở rộng công thức khi thêm dòng mới?", options: ["Chuyển sang Excel Table (Ctrl + T)", "Tô màu nền ô", "Gộp ô (Merge Cells)"], correct: 0 }
+          ],
+          story: "Két sắt trong Buồng Lái chỉ mở khi bạn nhập đúng tổng giá trị các giao dịch 'Nghi ngo' gắn với mã HK-019 đêm nay.",
+          taskHtml: `
+            <p>1. Tải file <strong>VuAn1_Ngay4_PhaAn.xlsx</strong>.</p>
+            <p>2. Dùng <strong>SUMIFS</strong> tính tổng <strong>Gia_Tri_VND</strong> thỏa mãn đồng thời: <strong>Ma_HK = "HK-019"</strong> và <strong>Trang_Thai = "Nghi ngo"</strong>.</p>
+            <p>3. Mở khóa Két sắt, rồi bấm vào người lái tàu <strong>Victor Hale</strong> để nghe toàn bộ cú Plot Twist cuối cùng!</p>
+          `,
+          hint: '=SUMIFS(E2:E10, B2:B10, "HK-019", D2:D10, "Nghi ngo") → Kết quả: 67200000',
+          passcodePrompt: "Nhập mật mã Két Sắt (tổng giao dịch 'Nghi ngo' của HK-019):",
+          answer: "67200000",
+          mosCheck: { requiredFormulas: ["SUMIFS"], expectedValue: 67200000, description: "Cần công thức SUMIFS ra đúng 67200000" },
+          rewardClue: "🎉 KÉT SẮT ĐÃ MỞ! Bên trong là cuốn sổ cái nguyên vẹn cùng lá thư đóng dấu sáp. Hãy bấm vào Victor Hale để Trình bằng chứng và hoàn thành Vụ án 01!",
+          excelFileName: "VuAn1_Ngay4_PhaAn.xlsx", excelGenerator: "case1_day4"
+        }
+      }
+    };
+
+    const LOCKED_CASES = [
+      {
+        id: "case_02_auction", season: "Mùa 1 • Vụ án 02", title: "The Velvet Auction",
+        subtitle: "Gà Excel & MOS: IF/IFS, LEFT/RIGHT/MID, Conditional Formatting, Data Validation",
+        description: "Phòng đấu giá cổ vật ánh đèn vàng. Phát hiện món đồ giả trong danh mục 200 cổ vật trước khi búa gõ xuống.",
+        locked: true
+      },
+      {
+        id: "case_03_ma", season: "Mùa 1 • Vụ án 03", title: "The Midnight M&A",
+        subtitle: "Excel Tài Chính: PV, FV, PMT, NPV, IRR & Lịch Trả Nợ",
+        description: "Văn phòng tầng 42 lúc nửa đêm. Định giá thương vụ mua lại và lật tẩy khoản nợ ẩn trước khi sàn chứng khoán mở cửa.",
+        locked: true
+      }
+    ];
+
+    // =========================================================================
+    // 2. QUẢN LÝ TRẠNG THÁI, ASSETS & BACKUP
+    // =========================================================================
+    const STORAGE_KEY = "ledger_room_v5_save";
+    let state = loadState();
+    let currentSceneIdx = 0;
+    let activeClue = null;
+    let typewriterTimer = null;
+
+    let customAssets = {
+      title: "title.png",
+      scene0: "scene1.png",
+      scene1: "scene2.png",
+      scene2: "scene3.png"
+    };
+
+    function loadState() {
+      try { const s = localStorage.getItem(STORAGE_KEY); if (s) return JSON.parse(s); } catch (e) {}
+      return { warmupPassed: {}, solved: {}, mosRankS: {}, loresFound: {}, customCases: [], settings: { fx: true, grain: true, sound: true } };
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      updateGlobalUI();
+    }
+
+    function loadAssetImg(event, key) {
+      const file = event.target.files[0];
+      if (!file) return;
+      customAssets[key] = URL.createObjectURL(file);
+      if (key === "title") {
+        document.getElementById("title-bg-layer").style.backgroundImage = `linear-gradient(to bottom, rgba(13,11,26,0.32), rgba(13,11,26,0.72)), url('${customAssets.title}')`;
+      } else {
+        renderScene(currentSceneIdx);
+      }
+    }
+
+    function updateGlobalUI() {
+      const solvedCount = Object.keys(state.solved).length;
+      const mosCount = Object.keys(state.mosRankS).length;
+      const loreCount = Object.keys(state.loresFound || {}).length;
+      document.getElementById("menu-solved-count").textContent = `${solvedCount} / 4`;
+      document.getElementById("menu-mos-count").textContent = mosCount;
+      document.getElementById("menu-lore-count").textContent = `${loreCount} / 4`;
+      document.getElementById("room-progress-text").textContent = `Manh mối (${solvedCount}/4)`;
+      document.getElementById("title-start-btn-text").textContent = solvedCount > 0 ? "Tiếp tục" : "Bắt đầu";
+      document.getElementById("setting-fx").checked = state.settings.fx;
+      document.getElementById("setting-grain").checked = state.settings.grain;
+      document.getElementById("setting-sound").checked = state.settings.sound;
+      document.getElementById("grain-layer").style.display = state.settings.grain ? "block" : "none";
+      document.getElementById("title-bg-layer").style.animationPlayState = state.settings.fx ? "running" : "paused";
+      document.getElementById("scene-bg-img").style.animationPlayState = state.settings.fx ? "running" : "paused";
+    }
+
+    function exportBackup() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `TheLedgerRoom_Backup_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      showBackupMsg("Đã tải file Backup (.json)!", "text-emerald-400");
+    }
+
+    function importBackup(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+          if (!parsed.solved) throw new Error("File không hợp lệ");
+          state = parsed;
+          saveState();
+          showBackupMsg("Khôi phục thành công! Đang tải lại...", "text-emerald-400");
+          setTimeout(() => location.reload(), 800);
+        } catch (err) {
+          showBackupMsg("Lỗi file Backup!", "text-red-400");
+        }
+      };
+      r.readAsText(file);
+    }
+
+    function showBackupMsg(msg, cls) {
+      const el = document.getElementById("backup-feedback");
+      el.className = `text-[11px] ${cls}`;
+      el.textContent = msg;
+      el.classList.remove("hidden");
+    }
+
+    // =========================================================================
+    // 3. ÂM THANH NHẸ
+    // =========================================================================
+    function playSound(type) {
+      if (!state.settings.sound) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        if (type === "open") {
+          osc.type = "sine"; osc.frequency.setValueAtTime(340, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(480, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.06, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+          osc.start(); osc.stop(ctx.currentTime + 0.18);
+        } else if (type === "success") {
+          osc.type = "sine"; osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.18);
+          gain.gain.setValueAtTime(0.1, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+          osc.start(); osc.stop(ctx.currentTime + 0.45);
+        } else {
+          osc.type = "triangle"; osc.frequency.setValueAtTime(185, ctx.currentTime);
+          gain.gain.setValueAtTime(0.09, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+          osc.start(); osc.stop(ctx.currentTime + 0.22);
+        }
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // 4. RENDER 3 CẢNH (VÙNG SÁNG SẠCH SẼ + KÍNH LÚP KHI CLICK + NHỊP THỞ NHÂN VẬT)
+    // =========================================================================
+    function triggerMagnifier(e) {
+      const mag = document.getElementById("click-magnifier");
+      mag.style.left = e.clientX + "px";
+      mag.style.top = e.clientY + "px";
+      mag.classList.remove("active");
+      void mag.offsetWidth; // reset animation
+      mag.classList.add("active");
+    }
+
+    function renderScene(idx) {
+      currentSceneIdx = idx;
+      const scene = CASE_01.scenes[idx];
+      document.getElementById("room-scene-badge").textContent = scene.badge;
+      document.getElementById("room-scene-title").textContent = scene.title;
+
+      const bgUrl = customAssets[`scene${idx}`] || scene.img;
+      document.getElementById("scene-bg-img").style.backgroundImage = `url('${bgUrl}')`;
+
+      [0, 1, 2].forEach(i => {
+        const b = document.getElementById(`map-btn-${i}`);
+        if (i === idx) b.className = "px-2.5 py-1 rounded-lg bg-[#f4b860] text-[#0d0b1a] font-semibold transition";
+        else b.className = "px-2.5 py-1 rounded-lg text-[#b0a4c0] hover:text-white transition";
+      });
+
+      const layer = document.getElementById("hotspots-layer");
+      layer.innerHTML = "";
+
+      scene.spots.forEach(sp => {
+        const isSolved = sp.type === "clue" && !!state.solved[sp.id];
+        const el = document.createElement("div");
+        el.className = `interact-region ${sp.type} ${sp.type === 'char' && state.settings.fx ? 'char-alive' : ''}`;
+        el.style.left = `${sp.x}%`;
+        el.style.top = `${sp.y}%`;
+        el.style.width = `${sp.w}%`;
+        el.style.height = `${sp.h}%`;
+
+        if (isSolved) {
+          el.innerHTML = `<div class="solved-tick"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>`;
+        }
+
+        el.onmousemove = (e) => showTip(e, sp.label + (isSolved ? " ✓" : ""));
+        el.onmouseleave = hideTip;
+        el.onclick = (e) => {
+          hideTip();
+          if (sp.type === "char") openDialogue(sp.id);
+          else if (sp.type === "door") switchScene(sp.targetScene);
+          else if (sp.type === "lore") { triggerMagnifier(e); openLoreModal(sp.id); }
+          else if (sp.type === "clue") { triggerMagnifier(e); openClueWithAnim(sp.id); }
+        };
+
+        layer.appendChild(el);
+      });
+
+      lucide.createIcons();
+    }
+
+    function switchScene(idx) {
+      playSound("open");
+      const overlay = document.getElementById("scene-transition");
+      overlay.style.opacity = "1";
+      setTimeout(() => {
+        renderScene(idx);
+        overlay.style.opacity = "0";
+      }, 240);
+    }
+
+    function startGame() {
+      playSound("open");
+      goToScreen("room");
+      renderScene(currentSceneIdx);
+    }
+
+    function goToScreen(name) {
+      ["title", "desk", "room"].forEach(s => document.getElementById(`screen-${s}`).classList.add("hidden"));
+      document.getElementById(`screen-${name}`).classList.remove("hidden");
+      if (name === "desk") renderDesk();
+      lucide.createIcons();
+    }
+
+    function renderDesk() {
+      const grid = document.getElementById("cases-grid");
+      grid.innerHTML = "";
+      const all = [CASE_01, ...LOCKED_CASES, ...(state.customCases || [])];
+      all.forEach(c => {
+        const done = c.id === CASE_01.id ? Object.keys(state.solved).length : 0;
+        const card = document.createElement("div");
+        card.className = `rounded-2xl overflow-hidden bg-[#161226] border ${c.locked ? 'border-white/10 opacity-60' : 'border-[#f4b860]/50 hover:border-[#f4b860] cursor-pointer'} transition flex flex-col justify-between`;
+        card.innerHTML = `
+          <div>
+            ${c.id === CASE_01.id ? `<div class="h-40 bg-cover bg-center" style="background-image: linear-gradient(to top, #161226, transparent), url('${customAssets.scene0}')"></div>` : ''}
+            <div class="p-6">
+              <span class="text-[11px] uppercase tracking-wider text-[#a78bfa]">${c.season}</span>
+              <h3 class="font-display text-2xl text-[#f6efe6] mt-1 mb-1">${c.title}</h3>
+              <p class="text-xs text-[#f4b860] mb-3">${c.subtitle}</p>
+              <p class="text-xs text-[#b0a4c0] leading-relaxed">${c.description}</p>
+            </div>
+          </div>
+          <div class="px-6 pb-5 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+            ${c.locked ? `<span class="text-[#8a7ea0]">Sắp mở khóa</span>` : `<span class="text-[#e8dff2]">Tiến độ: <strong class="text-[#f4b860]">${done}/4</strong></span><span class="text-[#f4b860] font-semibold">Vào điều tra →</span>`}
+          </div>
+        `;
+        if (!c.locked) card.onclick = () => { goToScreen("room"); renderScene(0); };
+        grid.appendChild(card);
+      });
+    }
+
+    function showTip(e, text) {
+      const tip = document.getElementById("hover-tooltip");
+      tip.textContent = text;
+      tip.style.left = e.clientX + "px";
+      tip.style.top = e.clientY + "px";
+      tip.style.opacity = "1";
+    }
+    function hideTip() { document.getElementById("hover-tooltip").style.opacity = "0"; }
+
+    // =========================================================================
+    // 5. SOI MANH MỐI PHỤ (KHÔNG BÀI TẬP EXCEL)
+    // =========================================================================
+    function openLoreModal(loreId) {
+      playSound("open");
+      const l = CASE_01.lores[loreId];
+      state.loresFound = state.loresFound || {};
+      state.loresFound[loreId] = true;
+      saveState();
+
+      document.getElementById("scene-stage").classList.add("scene-zooming");
+      setTimeout(() => {
+        document.getElementById("lore-title").textContent = l.title;
+        document.getElementById("lore-desc").textContent = l.desc;
+        document.getElementById("lore-deduction").textContent = l.deduction;
+        openModal("modal-lore");
+      }, 220);
+    }
+
+    function closeLoreModal() {
+      closeModal("modal-lore");
+      document.getElementById("scene-stage").classList.remove("scene-zooming");
+    }
+
+    // =========================================================================
+    // 6. ĐỐI THOẠI CHÍNH GIỮA MÀN HÌNH (CHÂN DUNG NHÚN NHẸ KHI NÓI)
+    // =========================================================================
+    function typeText(el, text) {
+      clearInterval(typewriterTimer);
+      const portrait = document.getElementById("vn-portrait");
+      portrait.classList.add("talking-portrait");
+      el.textContent = "";
+      let i = 0;
+      typewriterTimer = setInterval(() => {
+        el.textContent += text.charAt(i);
+        i++;
+        if (i >= text.length) {
+          clearInterval(typewriterTimer);
+          portrait.classList.remove("talking-portrait");
+        }
+      }, 15);
+    }
+
+    function openDialogue(charId) {
+      hideTip();
+      playSound("open");
+      const c = CASE_01.characters[charId];
+      const portrait = document.getElementById("vn-portrait");
+      const bgUrl = customAssets[`scene${c.portraitScene}`] || CASE_01.scenes[c.portraitScene].img;
+      portrait.style.backgroundImage = `url('${bgUrl}')`;
+      portrait.style.backgroundSize = "560%";
+      portrait.style.backgroundPosition = c.portraitPos;
+
+      document.getElementById("vn-name").textContent = c.name;
+      document.getElementById("vn-role").textContent = c.role;
+      document.getElementById("vn-overlay").classList.remove("hidden");
+      typeText(document.getElementById("vn-text"), c.intro);
+
+      const box = document.getElementById("vn-choices");
+      box.innerHTML = "";
+      c.questions.forEach(q => {
+        const b = document.createElement("button");
+        b.className = "w-full text-left px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs md:text-sm text-[#e8dff2] hover:border-[#7dd3fc] hover:text-[#7dd3fc] transition";
+        b.textContent = "💬 " + q.label;
+        b.onclick = () => typeText(document.getElementById("vn-text"), q.reply);
+        box.appendChild(b);
+      });
+
+      if (c.confront && state.solved[c.confront.requiresClue]) {
+        const cb = document.createElement("button");
+        cb.className = "w-full text-left px-4 py-2.5 rounded-xl bg-[#f4b860] text-[#0d0b1a] text-xs md:text-sm font-semibold hover:bg-[#ffd085] transition flex items-center gap-2";
+        cb.innerHTML = `<i data-lucide="zap" class="w-4 h-4"></i> ${c.confront.buttonLabel}`;
+        cb.onclick = () => { playSound("success"); typeText(document.getElementById("vn-text"), c.confront.reply); };
+        box.appendChild(cb);
+      }
+      lucide.createIcons();
+    }
+
+    function closeDialogue() {
+      clearInterval(typewriterTimer);
+      document.getElementById("vn-portrait").classList.remove("talking-portrait");
+      document.getElementById("vn-overlay").classList.add("hidden");
+    }
+
+    // =========================================================================
+    // 7. MỞ VẬT CHỨNG, BÀI GIẢNG GÀ EXCEL & CHẤM BÀI 2 LỚP
+    // =========================================================================
+    function openClueWithAnim(clueId) {
+      hideTip();
+      const h = CASE_01.clues[clueId];
+      if (h.requires && h.requires.some(r => !state.solved[r])) {
+        playSound("error");
+        document.getElementById("room-hint-bar").textContent = "Két sắt đang khóa cứng! Hãy hoàn thành đủ manh mối Ngày 1, 2, 3 trước nhé.";
+        return;
+      }
+
+      playSound("open");
+      document.getElementById("scene-stage").classList.add("scene-zooming");
+
+      setTimeout(() => {
+        activeClue = h;
+        document.getElementById("clue-day-badge").textContent = h.day;
+        document.getElementById("clue-mos-badge").textContent = h.mosTag;
+        document.getElementById("clue-title").textContent = h.title;
+        document.getElementById("clue-object-note").textContent = h.objectNote;
+        document.getElementById("clue-lecture-content").innerHTML = h.lectureHtml;
+        document.getElementById("clue-yt-keyword").textContent = `Từ khóa: "${h.ytKeyword}"`;
+        document.getElementById("clue-yt-link").href = `https://www.youtube.com/results?search_query=${encodeURIComponent(h.ytKeyword)}`;
+        document.getElementById("clue-story").textContent = h.story;
+        document.getElementById("clue-task").innerHTML = h.taskHtml;
+        document.getElementById("clue-hint-box").textContent = h.hint;
+        document.getElementById("clue-hint-box").classList.add("hidden");
+        document.getElementById("clue-passcode-prompt").textContent = h.passcodePrompt;
+        document.getElementById("input-passcode").value = state.solved[h.id] ? h.answer : "";
+        document.getElementById("input-xlsx-upload").value = "";
+        document.getElementById("passcode-feedback").classList.add("hidden");
+        document.getElementById("xlsx-feedback").classList.add("hidden");
+
+        renderWarmup(h);
+        updateClueBadges();
+        switchClueTab("lecture");
+        openModal("modal-clue");
+      }, 280);
+    }
+
+    function closeClueModal() {
+      closeModal("modal-clue");
+      document.getElementById("scene-stage").classList.remove("scene-zooming");
+    }
+
+    function switchClueTab(tab) {
+      ["lecture", "warmup", "lab", "solve"].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add("hidden");
+        const b = document.getElementById(`tab-btn-${t}`);
+        b.classList.remove("border-[#f4b860]", "text-[#f4b860]");
+        b.classList.add("border-transparent", "text-[#b0a4c0]");
+      });
+      document.getElementById(`tab-${tab}`).classList.remove("hidden");
+      const ab = document.getElementById(`tab-btn-${tab}`);
+      ab.classList.add("border-[#f4b860]", "text-[#f4b860]");
+      ab.classList.remove("border-transparent", "text-[#b0a4c0]");
+    }
+
+    function renderWarmup(h) {
+      const box = document.getElementById("warmup-questions");
+      box.innerHTML = "";
+      document.getElementById("warmup-status").textContent = state.warmupPassed[h.id] ? "✓ Đã vượt qua vòng phản xạ!" : "";
+      h.warmup.forEach((item, idx) => {
+        box.innerHTML += `
+          <div class="p-4 rounded-xl bg-[#1e1833] border border-white/10 space-y-2.5">
+            <p class="text-xs font-medium text-[#f6efe6]">Câu ${idx + 1}: ${item.q}</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              ${item.options.map((opt, oIdx) => `
+                <label class="flex items-center gap-2 p-2.5 rounded-lg bg-[#120e20] border border-white/10 hover:border-[#f4b860]/60 cursor-pointer text-xs text-[#d6cce6]">
+                  <input type="radio" name="wu_${idx}" value="${oIdx}" class="accent-[#f4b860]">
+                  <span>${opt}</span>
+                </label>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function checkWarmup() {
+      let ok = 0;
+      activeClue.warmup.forEach((item, idx) => {
+        const c = document.querySelector(`input[name="wu_${idx}"]:checked`);
+        if (c && Number(c.value) === item.correct) ok++;
+      });
+      const st = document.getElementById("warmup-status");
+      if (ok === activeClue.warmup.length) {
+        playSound("success");
+        state.warmupPassed[activeClue.id] = true;
+        saveState();
+        st.className = "text-xs text-emerald-400 font-semibold";
+        st.textContent = "Chuẩn 3/3! Đang chuyển sang Thực chiến Excel...";
+        setTimeout(() => switchClueTab("lab"), 600);
+      } else {
+        playSound("error");
+        st.className = "text-xs text-red-400";
+        st.textContent = `Bạn đúng ${ok}/${activeClue.warmup.length} câu. Xem lại Tab 1 Bài giảng nhé!`;
+      }
+    }
+
+    function updateClueBadges() {
+      const s = !!state.solved[activeClue.id];
+      const m = !!state.mosRankS[activeClue.id];
+      const l1 = document.getElementById("layer1-status");
+      l1.textContent = s ? "✓ Đã mở khóa" : "Chưa mở";
+      l1.className = s ? "text-xs text-emerald-400 font-semibold" : "text-xs text-[#b0a4c0]";
+
+      const l2 = document.getElementById("layer2-status");
+      l2.textContent = m ? "★ Đạt Chuẩn MOS (Hạng S)" : "Chưa kiểm định";
+      l2.className = m ? "text-xs text-amber-300 font-semibold" : "text-xs text-[#b0a4c0]";
+
+      const rb = document.getElementById("clue-reward-box");
+      if (s) { rb.classList.remove("hidden"); document.getElementById("clue-reward-text").textContent = activeClue.rewardClue; }
+      else rb.classList.add("hidden");
+    }
+
+    function verifyPasscode() {
+      const raw = document.getElementById("input-passcode").value.trim().toUpperCase().replace(/[,\.\s]/g, "");
+      const tgt = String(activeClue.answer).trim().toUpperCase().replace(/[,\.\s]/g, "");
+      const fb = document.getElementById("passcode-feedback");
+      fb.classList.remove("hidden");
+      if (raw === tgt) {
+        playSound("success");
+        state.solved[activeClue.id] = true;
+        saveState();
+        renderScene(currentSceneIdx);
+        updateClueBadges();
+        fb.className = "text-xs p-3 rounded-lg bg-emerald-950/60 border border-emerald-400/40 text-emerald-300";
+        fb.textContent = "Chính xác! Đã mở khóa bằng chứng. Nộp thêm file .xlsx ở dưới để lấy Hạng S MOS nhé.";
+      } else {
+        playSound("error");
+        fb.className = "text-xs p-3 rounded-lg bg-red-950/60 border border-red-400/40 text-red-300";
+        fb.textContent = "Mật mã chưa khớp! Kiểm tra lại công thức trong Excel nhé.";
+      }
+    }
+
+    function gradeUploadedExcel(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fb = document.getElementById("xlsx-feedback");
+      fb.classList.remove("hidden");
+      const r = new FileReader();
+      r.onload = (ev) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(ev.target.result), { type: "array", cellFormula: true });
+          const check = activeClue.mosCheck;
+          let validFormula = false, valueOnly = false;
+          wb.SheetNames.forEach(sn => {
+            const sh = wb.Sheets[sn];
+            Object.keys(sh).forEach(addr => {
+              if (addr.startsWith("!")) return;
+              const cell = sh[addr];
+              const f = cell.f ? String(cell.f).toUpperCase() : "";
+              const v = cell.v;
+              const valOk = (typeof check.expectedValue === "number")
+                ? (typeof v === "number" && Math.abs(v - check.expectedValue) < 0.01)
+                : (String(v || "").trim().toUpperCase() === String(check.expectedValue).toUpperCase());
+              const fnOk = check.requiredFormulas.some(fn => f.includes(fn));
+              if (fnOk && valOk) validFormula = true;
+              else if (!f && valOk) valueOnly = true;
+            });
+          });
+          if (validFormula) {
+            playSound("success");
+            state.mosRankS[activeClue.id] = true;
+            state.solved[activeClue.id] = true;
+            saveState();
+            renderScene(currentSceneIdx);
+            updateClueBadges();
+            fb.className = "text-xs p-3 rounded-lg bg-amber-950/60 border border-amber-400/50 text-amber-200";
+            fb.innerHTML = `<strong>★ XUẤT SẮC! CHUẨN MOS (HẠNG S)</strong><br/>Hệ thống xác nhận bạn dùng đúng hàm (${check.requiredFormulas.join(" / ")}) và ra đúng kết quả.`;
+          } else if (valueOnly) {
+            playSound("error");
+            fb.className = "text-xs p-3 rounded-lg bg-red-950/60 border border-red-400/40 text-red-300";
+            fb.innerHTML = `<strong>Lỗi thi MOS:</strong> Bạn đang gõ tay con số đáp án chứ chưa dùng hàm (${check.requiredFormulas.join(" / ")}).`;
+          } else {
+            playSound("error");
+            fb.className = "text-xs p-3 rounded-lg bg-red-950/60 border border-red-400/40 text-red-300";
+            fb.innerHTML = `<strong>Chưa đạt chuẩn:</strong> ${check.description}. Nhớ bấm Ctrl+S lưu file trước khi nộp.`;
+          }
+        } catch (err) {
+          fb.className = "text-xs p-3 rounded-lg bg-red-950/60 text-red-300";
+          fb.textContent = "File .xlsx không hợp lệ.";
+        }
+      };
+      r.readAsArrayBuffer(file);
+    }
+
+    // =========================================================================
+    // 8. TẠO FILE EXCEL ĐỀ BÀI THẬT (.XLSX)
+    // =========================================================================
+    function downloadCurrentExcel() {
+      const wb = XLSX.utils.book_new();
+      const t = activeClue.excelGenerator;
+      if (t === "case1_day1") {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+          ["Ma_HK", "Ho_Ten", "Toa", "Ga_Len", "Trong_Luong_Vali_Kg", "Ghi_Chu"],
+          ["HK-001", "Nguyễn Văn An", "Toa B", "Ga 1", 21.5, "Bình thường"],
+          ["HK-002", "Trần Thị Bình", "Toa A", "Ga 1", 19.0, "Bình thường"],
+          ["HK-004", "Phạm Minh Đức", "Toa A", "Ga 3", 18.2, "Bình thường"],
+          ["HK-006", "Đặng Quốc Huy", "Toa A", "Ga 2", 42.0, "Nhạc cụ"],
+          ["HK-008", "Hoàng Gia Khánh", "Toa B", "Ga 1", 55.0, "Hàng mẫu (Nhiễu Toa B)"],
+          ["HK-011", "Trịnh Bảo Ngọc", "Toa A", "Ga 3", 24.0, "Bình thường"],
+          ["HK-015", "Hồ Anh Tuấn", "Toa B", "Ga 3", 38.0, "Bình thường"],
+          ["HK-019", "Khách VIP Bí Ẩn", "Toa A", "Ga 3", 48.5, "Yêu cầu tự xách tay"],
+          ["HK-020", "Chu Tấn Đạt", "Toa A", "Ga 3", 15.6, "Bình thường"]
+        ]), "Danh_Sach_Hanh_Ly");
+      } else if (t === "case1_day2") {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+          ["Ma_Bien_Lai", "Toa", "Hang_Muc", "Phuong_Thuc", "So_Tien_VND"],
+          ["BL-101", "Toa A", "Phí nâng hạng", "Tien mat", 12500000],
+          ["BL-102", "Toa B", "Phí hành lý", "Chuyen khoan", 8000000],
+          ["BL-103", "Toa A", "Đặt ăn đêm", "Chuyen khoan", 14000000],
+          ["BL-104", "Toa A", "Phí phòng riêng", "Tien mat", 18000000],
+          ["BL-105", "Toa C", "Vé bổ sung", "Tien mat", 9500000],
+          ["BL-106", "Toa A", "Phí bảo vệ hành lý", "Tien mat", 24500000],
+          ["BL-107", "Toa B", "Phí nâng hạng", "Tien mat", 11000000],
+          ["BL-108", "Toa A", "Rượu vang", "The tin dung", 16000000],
+          ["BL-109", "Toa A", "Tiền cọc khoang VIP", "Tien mat", 14500000],
+          ["BL-111", "Toa A", "Phí đổi toa khẩn cấp", "Tien mat", 15000000]
+        ]), "So_Bien_Lai");
+      } else if (t === "case1_day3") {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+          ["Ma_Nghi_Pham", "So_Phong (Dung VLOOKUP/XLOOKUP)"], ["HK-004", ""], ["HK-011", ""], ["HK-019", ""], ["HK-020", ""]
+        ]), "Can_Tra_Cuu");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+          ["Ma_HK", "Toa", "So_Phong", "Trang_Thai"],
+          ["HK-001", "Toa B", "P101", "Đã lên tàu"],
+          ["HK-004", "Toa A", "P301", "Đã lên tàu"],
+          ["HK-011", "Toa A", "P302", "Đã lên tàu"],
+          ["HK-019", "Toa A", "P304", "Đã lên tàu"],
+          ["HK-020", "Toa A", "P305", "Đã lên tàu"]
+        ]), "Danh_Ba_Toa");
+      } else {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+          ["Ma_GD", "Ma_HK", "Thoi_Gian", "Trang_Thai", "Gia_Tri_VND"],
+          ["GD-01", "HK-019", "22:15", "Hop le", 15000000],
+          ["GD-02", "HK-004", "22:30", "Nghi ngo", 12000000],
+          ["GD-03", "HK-019", "23:05", "Nghi ngo", 22000000],
+          ["GD-04", "HK-011", "23:12", "Hop le", 8500000],
+          ["GD-05", "HK-019", "23:40", "Nghi ngo", 19500000],
+          ["GD-06", "HK-008", "23:55", "Nghi ngo", 45000000],
+          ["GD-07", "HK-019", "00:10", "Hop le", 5000000],
+          ["GD-08", "HK-019", "00:22", "Nghi ngo", 25700000],
+          ["GD-09", "HK-020", "00:35", "Hop le", 9000000]
+        ]), "Giao_Dich_Dem");
+      }
+      XLSX.writeFile(wb, activeClue.excelFileName);
+    }
+
+    // =========================================================================
+    // 9. HIỆU ỨNG MƯA NHẸ & BỤI ÁNH SÁNG ĐỘNG
+    // =========================================================================
+    function initAmbientCanvas(canvasId, dustCount, rainCount) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext("2d");
+      let w = canvas.width = window.innerWidth;
+      let h = canvas.height = window.innerHeight;
+      window.addEventListener("resize", () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; });
+
+      const dust = Array.from({ length: dustCount }, () => ({
+        x: Math.random() * w, y: Math.random() * h, r: Math.random() * 2 + 0.6,
+        vx: (Math.random() - 0.5) * 0.35, vy: -Math.random() * 0.38 - 0.1, a: Math.random() * 0.45 + 0.1
+      }));
+
+      const rain = Array.from({ length: rainCount }, () => ({
+        x: Math.random() * w, y: Math.random() * h, len: Math.random() * 18 + 10,
+        speed: Math.random() * 5 + 4, a: Math.random() * 0.16 + 0.04
+      }));
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        if (state.settings.fx) {
+          dust.forEach(p => {
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(244, 184, 96, ${p.a})`; ctx.fill();
+            p.x += p.vx; p.y += p.vy;
+            if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+          });
+          ctx.strokeStyle = "#c4b5fd"; ctx.lineWidth = 1;
+          rain.forEach(r => {
+            ctx.globalAlpha = r.a;
+            ctx.beginPath(); ctx.moveTo(r.x, r.y); ctx.lineTo(r.x - 4, r.y + r.len); ctx.stroke();
+            r.y += r.speed; r.x -= 1.2;
+            if (r.y > h) { r.y = -20; r.x = Math.random() * w; }
+          });
+          ctx.globalAlpha = 1;
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    }
+
+    function toggleLeftDrawer(open) {
+      document.getElementById("left-drawer").classList.toggle("open", open);
+      document.getElementById("drawer-backdrop").classList.toggle("hidden", !open);
+      lucide.createIcons();
+    }
+
+    function openEvidenceBag() {
+      const list = document.getElementById("evidence-list");
+      list.innerHTML = "";
+      const items = Object.values(CASE_01.clues).filter(h => state.solved[h.id]);
+      const lores = Object.values(CASE_01.lores).filter(l => (state.loresFound || {})[l.id]);
+
+      if (!items.length && !lores.length) {
+        list.innerHTML = `<p class="text-[#8a7ea0] italic text-center py-6">Chưa có bằng chứng nào. Hãy rê chuột quanh phòng để soi đồ vật phát sáng!</p>`;
+      } else {
+        items.forEach(h => {
+          list.innerHTML += `
+            <div class="p-3.5 rounded-xl bg-[#1e1833] border border-[#f4b860]/35 space-y-1">
+              <div class="flex justify-between text-xs"><span class="text-[#f4b860] font-semibold">${h.day} • ${h.title}</span>${state.mosRankS[h.id] ? '<span class="text-amber-300">★ Hạng S MOS</span>' : ''}</div>
+              <p class="text-xs text-[#e8dff2]">${h.rewardClue}</p>
+            </div>
+          `;
+        });
+        lores.forEach(l => {
+          list.innerHTML += `
+            <div class="p-3.5 rounded-xl bg-[#151126] border border-[#a78bfa]/30 space-y-1">
+              <span class="text-[11px] text-[#a78bfa] font-semibold">Ghi chú phụ • ${l.title}</span>
+              <p class="text-xs text-[#d6cce6] italic">${l.deduction}</p>
+            </div>
+          `;
+        });
+      }
+      openModal("modal-evidence");
+    }
+
+    function importCustomCase() {
+      const fb = document.getElementById("import-feedback");
+      fb.classList.remove("hidden");
+      try {
+        const p = JSON.parse(document.getElementById("import-json-input").value.trim());
+        if (!p.id || !p.title) throw new Error("Thiếu id hoặc title.");
+        state.customCases.push(p);
+        saveState();
+        fb.className = "text-xs text-emerald-400";
+        fb.textContent = `Đã nạp "${p.title}"!`;
+        setTimeout(() => { closeModal("modal-import"); goToScreen("desk"); }, 700);
+      } catch (err) {
+        fb.className = "text-xs text-red-400";
+        fb.textContent = "Lỗi JSON: " + err.message;
+      }
+    }
+
+    function updateSettings() {
+      state.settings.fx = document.getElementById("setting-fx").checked;
+      state.settings.grain = document.getElementById("setting-grain").checked;
+      state.settings.sound = document.getElementById("setting-sound").checked;
+      saveState();
+      renderScene(currentSceneIdx);
+    }
+
+    function resetAllProgress() {
+      if (confirm("Xóa toàn bộ tiến độ và chơi lại từ đầu?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+      }
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove("hidden"); lucide.createIcons(); }
+    function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+
+    initAmbientCanvas("ambient-canvas", 36, 40);
+    initAmbientCanvas("room-fx-canvas", 24, 18);
+    updateGlobalUI();
+    lucide.createIcons();
+  </script>
+</body>
+</html>
